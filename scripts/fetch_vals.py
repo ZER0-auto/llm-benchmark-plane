@@ -7,7 +7,13 @@ OUT = os.path.join(BASE, "data", "vals", "vals_rows.csv")
 
 SLUGS = ["vibe-code", "code-migration-v1-1", "terminal-bench-4",
          "skillsbench", "programbench", "swebench", "ioi",
-         "proof_bench", "mysterymechanism"]
+         "proof_bench", "mysterymechanism"] + [
+    # 2026-10-25 起接入：扫描过锚点（含 1017 或次新 Flash）的其余 Vals 榜
+    "sage", "legal_bench", "medcode", "medscribe", "emb-v1-1", "fabv2-1",
+    "legal_research", "tax_agent_bench", "cyber", "srebench",
+    "public-benefits-bench", "hlab", "terminal-bench-science",
+    "swebench-multimodal", "biomysterybench",
+]
 
 def dec(o):
     if isinstance(o, list):

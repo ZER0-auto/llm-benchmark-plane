@@ -112,10 +112,11 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 每个来源只取该模型<b>最新一次</b>测量值，不跨月取中位——模型和题库都在迭代，跨版本数值不可比。<br>
 严格版本内比较：致知按<b>月榜</b>切版本，版本内必须含基准 DeepSeek V4.1 Flash 1017，否则整版丢弃；屎山是“难度向上加题、模型从低到高逐级通过”的阶梯赛，整块算一个版本。<br>
 缺 1017 的榜（ProofBench / MysteryMechanism / SkillsBench / IOI / 屎山）用 <b>DeepSeek V4.1 Flash 作链式锚点</b>：先在其他榜测出它相对 1017 的两个因子（P __SECP__ / X __SECX__），再按该榜成分 α 折算出该榜的等效基准。屎山榜单写的 <b>DeepSeek Flash</b> 经核实就是这个 V4.1 Flash，不是 1017。<br>
-每个来源带一个 P 成分 α：r ≈ α·P + (1−α)·X，按可信度 w 做岭回归解出每个模型的 P 与 X，不在源与源之间硬切轴。权重与 α 见 <code>sources.csv</code>。<br>
-Artificial Analysis 只用分项（HLE / AA-LCR / CritPT / SciCode / AutomationBench，合计权重 0.12），不使用它的综合指数；Omniscience 因分数跨度过大暂不计分。<br>
+每个来源带一个 P 成分 α：r ≈ α·P + (1−α)·X，按可信度 w 做岭回归解出每个模型的 P 与 X，不在源与源之间硬切轴。<br>
+权重已按留一残差校准（<code>scripts/calibrate_weights.py</code>，口径见 METHOD §15）：注册表里 <code>weight_prior</code> 是初猜、<code>weight_cal</code> 是校准值，管道优先用后者；公开源占比按上限 0.20 配平。<br>
+Artificial Analysis 只用分项（HLE / AA-LCR / CritPT / SciCode / AutomationBench），不使用它的综合指数；Omniscience 因分数跨度过大暂不计分。<br>
 档位：取两轴中较高者，M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3。<br>
-若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。覆盖度（tooltip 里 P x% · X x%）低于 30% 时数值会被先验拉向 1.0 附近，谨慎解读。公开源权重合计 0.21、私有 1.83（归一后公开约 10%）。ProgramBench 不在来源表中（分数区间 0–18.5 过窄，比值法失效）。悬停看各源比值。
+若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。覆盖度（tooltip 里 P x% · X x%）低于 30% 时数值会被先验拉向 1.0 附近，谨慎解读。本轮守卫剔除：__DROPPED__（等效基准超过该榜满分、或不足满分 5%，比值失真）；接近满分的榜：__NEAR__（比值放大，谨慎解读）；ProgramBench 不在来源表中（分数区间 0–18.5 过窄）。悬停看各源比值。
 </div>
 </div>
 <script>
@@ -305,7 +306,9 @@ html = HTML.replace("__DATA__", json.dumps(data, ensure_ascii=False))
 html = html.replace("__META__", json.dumps(meta, ensure_ascii=False))
 html = html.replace("__SECP__", f'{METRICS.get("sec", {}).get("P", 0):.3f}')
 html = html.replace("__SECX__", f'{METRICS.get("sec", {}).get("X", 0):.3f}')
-html = html.replace("__SKILL__", f'{METRICS.get("dropped", {}).get("skillsbench", 0):.2f}')
+DROP_NAMES = "、".join(k for k in METRICS.get("dropped", {})) or "无"
+NEAR_NAMES = "、".join(METRICS.get("near_ceiling", [])) or "无"
+html = html.replace("__DROPPED__", DROP_NAMES).replace("__NEAR__", NEAR_NAMES)
 out = os.path.join(OUT, "model_plane.html")
 open(out, "w", encoding="utf-8").write(html)
 print("wrote", out, len(html), "bytes,", len(data), "points")

@@ -1,9 +1,18 @@
 {
  "sec": {
-  "P": 0.9291,
-  "X": 0.5668
+  "P": 0.9023,
+  "X": 0.7288
  },
- "dropped": {},
+ "dropped": {
+  "medscribe": 105.97,
+  "srebench": 0.97,
+  "terminal-bench-science": 0.0
+ },
+ "near_ceiling": [
+  "legal_bench",
+  "cyber",
+  "shishan"
+ ],
  "thresholds": {
   "M0": 1.25,
   "M1": 1.0,

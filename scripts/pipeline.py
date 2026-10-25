@@ -39,7 +39,9 @@ def load_registry():
     for r in csv.DictReader(open(p, encoding="utf-8-sig")):
         if r["status"] not in ("active", "guarded"): continue
         if not r["alpha_p"].strip(): continue
-        reg[r["id"]] = {"name": r["name"], "w": float(r["weight_prior"]),
+        reg[r["id"]] = {"name": r["name"],
+                        "w": float(r.get("weight_cal") or r["weight_prior"]),
+                        "w_prior": float(r["weight_prior"]),
                         "grade": r["grade"], "alpha": float(r["alpha_p"])}
     return reg
 
@@ -268,19 +270,33 @@ def main():
     if shi_chained:
         chained["shishan"] = [r for rs in shi_chained.values() for r in rs]
     dropped = {}
+    near = []
     for slug, rows in chained.items():
         if "P" not in sec or "X" not in sec: continue
         a = SOURCES[slug]["alpha"]
         r_anchor = a * sec["P"] + (1 - a) * sec["X"]
         ref = next((r for r in rows if r["key"] == SECONDARY_KEY), None)
         if not ref: continue
+        # 该榜满分是多少：0–1 制还是百分制（看全榜最大值；Rasch 榜另算）
+        ceiling = 1.0 if max(r["value"] for r in rows) <= 1.05 else 100.0
         scale = ref["value"] / r_anchor
-        if scale > 100 and slug != "shishan":
-            print(f"  {slug}: 等效基准 {scale:.2f} > 100%，比值法失效，丢弃")
+        if ref["value"] <= 0:
+            print(f"  {slug}: 副锚点在该榜原始分为 0，比值无定义，丢弃")
+            dropped[slug] = 0.0
+            continue
+        if scale < 0.05 * ceiling:
+            print(f"  {slug}: 等效基准 {scale:.2f} 低于该榜满分 {ceiling:g} 的 5%，比值被极端放大，丢弃")
+            dropped[slug] = scale
+            continue
+        if scale > ceiling and slug != "shishan":
+            print(f"  {slug}: 等效基准 {scale:.2f} 超过该榜满分 {ceiling:g}，比值法失效，丢弃")
             dropped[slug] = scale
             continue
         if scale > 100:
             print(f"  {slug}: 等效基准 {scale:.2f}（Rasch 分不是百分制，跳过 >100 守卫）")
+        elif scale > 0.9 * ceiling:
+            near.append(slug)
+            print(f"  {slug}: 等效基准 {scale:.2f} 接近该榜满分 {ceiling:g}，比值放大有风险")
         print(f"  {slug}: 副锚点原始 {ref['value']:.2f} / 混合相对 {r_anchor:.4f} -> 等效基准 {scale:.2f}")
         for r in rows:
             if r["key"] == SECONDARY_KEY: continue
@@ -290,6 +306,7 @@ def main():
     metrics = {
         "sec": {k: round(v, 4) for k, v in sec.items()},
         "dropped": {k: round(v, 2) for k, v in dropped.items()},
+        "near_ceiling": near,
         "thresholds": {"M0": 1.25, "M1": 1.00, "M2": 0.70},
     }
     with open(os.path.join(OUT, "metrics.json"), "w", encoding="utf-8") as mf:
@@ -297,7 +314,8 @@ def main():
 
     ev = open(os.path.join(OUT, "model_evidence.csv"), "w", newline="", encoding="utf-8-sig")
     w = csv.writer(ev, lineterminator="\n")
-    w.writerow(["model_key", "model_id", "source", "axis", "alpha_p", "grade", "weight", "version", "date", "raw", "anchor_raw", "ratio"])
+    w.writerow(["model_key", "model_id", "source_id", "source", "axis", "alpha_p", "grade",
+                "weight", "version", "date", "raw", "anchor_raw", "ratio"])
 
     names, parts = {}, {}
     for s, rows in per_source.items():
@@ -309,7 +327,7 @@ def main():
             ratio = r["value"] / a
             names.setdefault(k, r["name"])
             parts.setdefault(k, []).append((SOURCES[s]["w"], ratio, s))
-            w.writerow([k, r["name"], SOURCES[s]["name"], ax, alpha, SOURCES[s]["grade"],
+            w.writerow([k, r["name"], s, SOURCES[s]["name"], ax, alpha, SOURCES[s]["grade"],
                         SOURCES[s]["w"], r["version"], r.get("date", r["version"]),
                         round(r["value"], 2), round(a, 2), round(ratio, 4)])
     ev.close()

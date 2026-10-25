@@ -1,0 +1,57 @@
+{
+ "iterations": [
+  {
+   "iter": 1,
+   "max_dw": 0.3191,
+   "spearman": 0.98605,
+   "shift": 0.04863
+  },
+  {
+   "iter": 2,
+   "max_dw": 0.027,
+   "spearman": 0.99961,
+   "shift": 0.00584
+  },
+  {
+   "iter": 3,
+   "max_dw": 0.0035,
+   "spearman": 0.99994,
+   "shift": 0.00104
+  },
+  {
+   "iter": 4,
+   "max_dw": 0.0007,
+   "spearman": 1.0,
+   "shift": 0.00033
+  },
+  {
+   "iter": 5,
+   "max_dw": 0.0003,
+   "spearman": 0.99994,
+   "shift": 0.0001
+  },
+  {
+   "iter": 6,
+   "max_dw": 0.0001,
+   "spearman": 1.0,
+   "shift": 3e-05
+  }
+ ],
+ "converged_at": 6,
+ "public_share": 0.2,
+ "tier_changed_vs_prior": [
+  "gemini3.1pro",
+  "gemini3.8flash",
+  "glm5.3flash",
+  "grok4.6",
+  "haiku5.5",
+  "kimik3",
+  "musewonder1.0",
+  "qwen3.827b"
+ ],
+ "perturb_flips_mean": 1.7,
+ "lam": 0.03,
+ "eps": 0.05,
+ "public_cap": 0.2,
+ "single_cap": 0.22
+}
