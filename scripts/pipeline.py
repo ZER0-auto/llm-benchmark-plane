@@ -46,7 +46,8 @@ def load_registry():
     return reg
 
 SOURCES = load_registry()
-SECONDARY_KEY = "deepseekv4.1flash"   # 与基准不同的模型，但可作链式锚点
+SECONDARY_KEY = "deepseekv4.1flash"
+LAM_DEFAULT = 0.03   # 岭回归强度：证据少时把 P/X 拉向加权均值   # 与基准不同的模型，但可作链式锚点
 
 def norm(name):
     s = PAREN.sub("", name.strip())
@@ -67,7 +68,7 @@ def load_logic():
             try: v = float(r["中位分数"])
             except (TypeError, ValueError): continue
             out.append({"key": norm(r["模型"]), "name": display(r["模型"]),
-                        "version": m, "date": m, "value": v})
+                        "raw_name": r["模型"], "version": m, "date": m, "value": v})
     return out
 
 TASKS = ["Simple Model(H)", "iOS+Server(I)", "Animation(J)", "Data Process(K)",
@@ -137,7 +138,7 @@ def load_vals():
         a = agg.setdefault(r["slug"], {})
         cur = a.get(norm(name))
         if cur is None or acc > cur["value"]:
-            a[norm(name)] = {"key": norm(name), "name": name,
+            a[norm(name)] = {"key": norm(name), "name": name, "raw_name": r["model"],
                              "version": r.get("updated", ""), "date": (r.get("updated") or "")[:10], "value": acc}
     return {s: list(v.values()) for s, v in agg.items()}
 
@@ -149,7 +150,7 @@ def load_aa():
         key = AA_MAP.get(r["model_slug"])
         if not key: continue
         agg.setdefault(r["source_id"], []).append(
-            {"key": key, "name": r["model_name"], "version": "aa-2026-10",
+            {"key": key, "name": r["model_name"], "raw_name": r["model_slug"], "version": "aa-2026-10",
              "date": "2026-10-25", "value": float(r["score"])})
     return agg
 
@@ -171,8 +172,8 @@ def usable_versions(rows, label):
 
 ORDER = list(SOURCES)
 
-def fit_px(items, lam=0.03):
-    """items: [(w, alpha, ratio)]；解 r ≈ α·P + (1-α)·X，岭回归稳定。"""
+def fit_px(items, lam=LAM_DEFAULT):
+    """items: [(w, alpha, ratio)]；解 r ≈ α·P + (1-α)·X，岭回归稳定（无约束）。"""
     A = B = C = D = E = 0.0
     r0n = r0d = 0.0
     for w, a, r in items:
@@ -189,6 +190,61 @@ def fit_px(items, lam=0.03):
     A += lam; C += lam; D += lam * r0; E += lam * r0
     det = A * C - B * B
     return (D * C - E * B) / det, (E * A - D * B) / det
+
+
+def fit_px_bounded(items, lam=LAM_DEFAULT):
+    """同 fit_px，但把 P、X 限制在该模型观测比值的区间 [min r, max r] 内。
+
+    无约束解会外推：某模型所有榜的比值最高只有 0.94，回归却可能给出 X=1.2——
+    那是 α 混合方程折中的产物，没有任何榜支持。界约束用活跃集枚举求精确解：
+    先试内部解，不可行就依次把 P 或 X 钉在边界上、另一个取条件极值，再退到四角。
+    返回 (P, X, 说明)；说明为空表示内部解本来就在界内。
+    """
+    if not items:
+        return None, None, ""
+    rs = [r for _, _, r in items]
+    lo, hi = min(rs), max(rs)
+    p0, x0 = fit_px(items, lam)
+    if p0 is None:
+        return None, None, ""
+    tol = 1e-3
+    if lo - tol <= p0 <= hi + tol and lo - tol <= x0 <= hi + tol:
+        return p0, x0, ""
+    tw = sum(w for w, _, _ in items)
+    r0 = sum(w * r for w, _, r in items) / tw
+
+    def obj(pp, xx):
+        return sum(w * (r - (a * pp + (1 - a) * xx)) ** 2 for w, a, r in items) \
+               + lam * ((pp - r0) ** 2 + (xx - r0) ** 2)
+
+    def cond_x(P):
+        num = den = 0.0
+        for w, a, r in items:
+            num += w * (1 - a) * (r - a * P); den += w * (1 - a) ** 2
+        return (num + lam * r0) / (den + lam) if den + lam else P
+
+    def cond_p(X):
+        num = den = 0.0
+        for w, a, r in items:
+            num += w * a * (r - (1 - a) * X); den += w * a ** 2
+        return (num + lam * r0) / (den + lam) if den + lam else X
+
+    cands = []
+    for P in (lo, hi):
+        X = cond_x(P)
+        if lo <= X <= hi: cands.append((P, X))
+    for X in (lo, hi):
+        P = cond_p(X)
+        if lo <= P <= hi: cands.append((P, X))
+    cands += [(P, X) for P in (lo, hi) for X in (lo, hi)]
+    p1, x1 = min(cands, key=lambda t: obj(t[0], t[1]))
+    return p1, x1, f"钳位到 [{lo:.2f},{hi:.2f}]（无约束解 P {p0:.3f}/X {x0:.3f} 越界）"
+
+
+def fit_rmse(items, px, x_):
+    tw = sum(w for w, _, _ in items)
+    if not tw: return 0.0
+    return math.sqrt(sum(w * (r - (a * px + (1 - a) * x_)) ** 2 for w, a, r in items) / tw)
 
 
 def main():
@@ -233,9 +289,22 @@ def main():
         best = {}
         for ver, rs in by_ver.items():
             for r in rs:
-                if r["key"] not in best or ver > best[r["key"]]["version"]:
-                    best[r["key"]] = r
+                cur = best.get(r["key"])
+                if cur is None or ver > cur["version"] or (ver == cur["version"] and r["value"] > cur["value"]):
+                    best[r["key"]] = r   # 同键多配置取最高分（最强档），被丢的配置由 warn_variants 打印
         return best
+
+    def warn_variants(rows, label):
+        """同一版本里同一个键出现多行（不同推理档位/配置）：取用的是第一行，必须可见。"""
+        by = {}
+        for r in rows: by.setdefault((r["version"], r["key"]), []).append(r)
+        for (ver, key), rs in sorted(by.items()):
+            if len(rs) < 2: continue
+            vals = [f"{r['name']}={r['value']:.2f}" for r in rs]
+            print(f"  ⚠ {label} {ver} 同键多配置（取最高分那档）：{key} → {' / '.join(vals)}")
+
+    warn_variants(logic_rows, "logic")
+    warn_variants(code_rows, "code_v3")
 
     per_source = {}
     per_source["logic"] = latest(logic_ok)
@@ -261,8 +330,9 @@ def main():
         a = anchor_of.get((s, r["version"]))
         if a: items.append((SOURCES[s]["w"], SOURCES[s]["alpha"], r["value"] / a))
     if items:
-        sp, sx = fit_px(items)
+        sp, sx, note = fit_px_bounded(items)
         sec = {"P": sp, "X": sx}
+        if note: print(f"  副锚点 {note}")
     print("副锚点 DeepSeek V4.1 Flash 相对能力：P=%.4f X=%.4f" % (sec.get("P", 0), sec.get("X", 0)))
 
     # 链式：用副锚点把缺主锚点的榜单接进来（含屎山）
@@ -314,8 +384,8 @@ def main():
 
     ev = open(os.path.join(OUT, "model_evidence.csv"), "w", newline="", encoding="utf-8-sig")
     w = csv.writer(ev, lineterminator="\n")
-    w.writerow(["model_key", "model_id", "source_id", "source", "axis", "alpha_p", "grade",
-                "weight", "version", "date", "raw", "anchor_raw", "ratio"])
+    w.writerow(["model_key", "model_id", "source_model", "source_id", "source", "axis",
+                "alpha_p", "grade", "weight", "version", "date", "raw", "anchor_raw", "ratio"])
 
     names, parts = {}, {}
     for s, rows in per_source.items():
@@ -327,7 +397,8 @@ def main():
             ratio = r["value"] / a
             names.setdefault(k, r["name"])
             parts.setdefault(k, []).append((SOURCES[s]["w"], ratio, s))
-            w.writerow([k, r["name"], s, SOURCES[s]["name"], ax, alpha, SOURCES[s]["grade"],
+            w.writerow([k, r["name"], r.get("raw_name", r["name"]), s, SOURCES[s]["name"],
+                        ax, alpha, SOURCES[s]["grade"],
                         SOURCES[s]["w"], r["version"], r.get("date", r["version"]),
                         round(r["value"], 2), round(a, 2), round(ratio, 4)])
     ev.close()
@@ -341,8 +412,12 @@ def main():
         x_parts = [(SOURCES[s]["w"] * (1 - SOURCES[s]["alpha"]), r) for w, r, s in ps]
         pw = sum(w for w, _ in p_parts); xw = sum(w for w, _ in x_parts)
         if pw <= 0 and xw <= 0: continue
-        p, x = fit_px([(SOURCES[s]["w"], SOURCES[s]["alpha"], r) for w, r, s in ps])
+        items = [(SOURCES[s]["w"], SOURCES[s]["alpha"], r) for w, r, s in ps]
+        p, x, clamp = fit_px_bounded(items)
         if p is None: continue
+        if clamp: print(f"  {names[k]}: {clamp}")
+        rs = [r for _, r, _ in ps]
+        rmse = fit_rmse(items, p, x)
         axis_only = ""
         top = max(p, x)
         tier = "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
@@ -351,14 +426,16 @@ def main():
         pcov = pw / max_p if max_p else 0
         xcov = xw / max_x if max_x else 0
         row = [names[k], k, round(p, 3), round(x, 3), tier, tag, axis_only,
-               round(pcov, 3), round(xcov, 3),
+               round(pcov, 3), round(xcov, 3), round(rmse, 3),
+               f"{min(rs):.2f}~{max(rs):.2f}", 1 if clamp else 0,
                "+".join(s for _, _, s in ps),
                round(x2map.get(k, -1), 1) if k in x2map else ""]
         row += [round(rmap[s], 3) if s in rmap else "" for s in ORDER]
         plane.append(row)
 
     cols = ["model_id", "model_key", "P", "X", "tier", "tags", "axis_only",
-            "P_coverage", "X_coverage", "sources", "X2"] + \
+            "P_coverage", "X_coverage", "fit_rmse", "ratio_range", "clamped",
+            "sources", "X2"] + \
            ["r_" + s.replace("-", "_") for s in ORDER]
     pl = open(os.path.join(OUT, "model_plane.csv"), "w", newline="", encoding="utf-8-sig")
     w = csv.writer(pl, lineterminator="\n"); w.writerow(cols)

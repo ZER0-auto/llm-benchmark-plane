@@ -1,11 +1,11 @@
 {
  "sec": {
-  "P": 0.9023,
-  "X": 0.7288
+  "P": 0.9031,
+  "X": 0.7331
  },
  "dropped": {
-  "medscribe": 105.97,
-  "srebench": 0.97,
+  "medscribe": 105.6,
+  "srebench": 0.96,
   "terminal-bench-science": 0.0
  },
  "near_ceiling": [

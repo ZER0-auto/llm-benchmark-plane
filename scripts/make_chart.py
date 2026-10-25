@@ -26,6 +26,8 @@ for r in rows:
         "aa_critpt": num(r, "r_aa_critpt"), "aa_omni": num(r, "r_aa_omniscience"),
         "aa_scicode": num(r, "r_aa_scicode"), "aa_auto": num(r, "r_aa_automation"),
         "pcov": float(r.get("P_coverage") or 0),
+        "fit": float(r.get("fit_rmse") or 0), "rrange": r.get("ratio_range") or "",
+        "clamp": r.get("clamped") == "1",
     })
 
 ev = list(csv.DictReader(open(os.path.join(OUT, "model_evidence.csv"), encoding="utf-8-sig")))
@@ -119,6 +121,7 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 严格版本内比较：致知按<b>月榜</b>切版本，版本内必须含基准 DeepSeek V4.1 Flash 1017，否则整版丢弃；屎山是“难度向上加题、模型从低到高逐级通过”的阶梯赛，整块算一个版本。<br>
 缺 1017 的榜（ProofBench / MysteryMechanism / SkillsBench / IOI / 屎山）用 <b>DeepSeek V4.1 Flash 作链式锚点</b>：先在其他榜测出它相对 1017 的两个因子（P __SECP__ / X __SECX__），再按该榜成分 α 折算出该榜的等效基准。屎山榜单写的 <b>DeepSeek Flash</b> 经核实就是这个 V4.1 Flash，不是 1017。<br>
 每个来源带一个 P 成分 α：r ≈ α·P + (1−α)·X，按可信度 w 做岭回归解出每个模型的 P 与 X，不在源与源之间硬切轴。<br>
+P 与 X 被限制在该模型<b>观测比值的区间</b>内：无约束解会外推（某模型全部榜最高只 0.94，回归却能给出 X=1.2），钳位后的点会在 tooltip 里标出拟合 RMSE 与比值范围。<br>
 权重已按留一残差校准（<code>scripts/calibrate_weights.py</code>，口径见 METHOD §15）：注册表里 <code>weight_prior</code> 是初猜、<code>weight_cal</code> 是校准值，管道优先用后者；公开源占比按上限 0.20 配平。<br>
 Artificial Analysis 只用分项（HLE / AA-LCR / CritPT / SciCode / AutomationBench），不使用它的综合指数；Omniscience 因分数跨度过大暂不计分。<br>
 档位：取两轴中较高者，M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3。<br>
@@ -326,6 +329,7 @@ function showTip(d,e){
     <span class="k">档位</span> ${d.tier}　<span class="k">覆盖</span> P ${(d.pcov*100).toFixed(0)}% · X ${(d.cov*100).toFixed(0)}%<br>
     ${d.only?`<span class="k">注意</span> 仅 ${d.only} 轴已测，位置按 P=X 假设放置<br>`:""}
     ${(d.pcov<0.35&&d.cov<0.35)?`<span class="k">证据薄</span> 两轴覆盖度都低于 35%，数值靠先验撑住，只作参考<br>`:""}
+    <span class="k">拟合</span> RMSE ${d.fit.toFixed(2)} · 观测比值 ${d.rrange}${d.clamp?"（坐标已钳位到该区间）":""}<br>
     ${d.x2!=null?`<span class="k">X2 可恢复</span> ${d.x2.toFixed(1)}%<br>`:""}
     ${raw?`<span class="k">各源比值</span> ${raw}<br>`:""}
     <span class="k">来源</span> ${d.src}<br>
