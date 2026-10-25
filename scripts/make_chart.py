@@ -27,6 +27,7 @@ for r in rows:
         "aa_scicode": num(r, "r_aa_scicode"), "aa_auto": num(r, "r_aa_automation"),
         "pcov": float(r.get("P_coverage") or 0),
         "fit": float(r.get("fit_rmse") or 0), "rrange": r.get("ratio_range") or "",
+        "dw": r.get("downweighted") or "",
         "clamp": r.get("clamped") == "1",
     })
 
@@ -116,7 +117,7 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 <div class="tip" id="tip"></div>
 <details><summary>展开数据表</summary><div id="tbl"></div></details>
 <div class="note">
-坐标是「相对基准模型的能力倍数」，1.0 = DeepSeek V4.1 Flash 1017。<br>
+坐标是「相对基准模型的能力倍数」，1.0 = DeepSeek V4.1 Flash 1017；在场榜上还钉了 <b>0 点 = MiniMax-M3</b>（零点高的榜按动态范围降权，不做放大硬凑）。<br>
 每个来源只取该模型<b>最新一次</b>测量值，不跨月取中位——模型和题库都在迭代，跨版本数值不可比。<br>
 严格版本内比较：致知按<b>月榜</b>切版本，版本内必须含基准 DeepSeek V4.1 Flash 1017，否则整版丢弃；屎山是“难度向上加题、模型从低到高逐级通过”的阶梯赛，整块算一个版本。<br>
 缺 1017 的榜（ProofBench / MysteryMechanism / SkillsBench / IOI / 屎山）用 <b>DeepSeek V4.1 Flash 作链式锚点</b>：先在其他榜测出它相对 1017 的两个因子（P __SECP__ / X __SECX__），再按该榜成分 α 折算出该榜的等效基准。屎山榜单写的 <b>DeepSeek Flash</b> 经核实就是这个 V4.1 Flash，不是 1017。<br>
@@ -136,7 +137,8 @@ document.getElementById("meta").textContent =
 const NS="http://www.w3.org/2000/svg";
 const svg=document.getElementById("chart"), tip=document.getElementById("tip");
 const W=1420,H=900,L=92,R=1330,T=60,B=812;
-const MAX=1.8, MIN=0;
+const MAX=Math.max(1.8, Math.ceil(Math.max(...DATA.map(d=>Math.max(d.P,d.X)))*10)/10);
+const MIN=Math.min(0, Math.floor(Math.min(...DATA.map(d=>Math.min(d.P,d.X)))*10)/10);
 const px=v=>L+(v-MIN)/(MAX-MIN)*(R-L), py=v=>B-(v-MIN)/(MAX-MIN)*(B-T);
 const COLOR={M0:"var(--m0)",M1:"var(--m1)",M2:"var(--m2)",M3:"var(--m3)"};
 let pinned=null;
@@ -159,6 +161,11 @@ function draw(){
     el("text",{x:px(MAX)-4,y:py(t)-5,class:"tick",fill:c,"text-anchor":"end"},svg).textContent=t.toFixed(2);
   });
   el("text",{x:px(1)+6,y:py(MIN)-6,class:"tick",fill:"#b45309"},svg).textContent="基准 1.0";
+  if(MIN<0){
+    el("line",{x1:px(MIN),y1:py(0),x2:px(MAX),y2:py(0),stroke:"#6b7280","stroke-width":1,
+      "stroke-dasharray":"2 3",opacity:0.5},svg);
+    el("text",{x:px(MIN)+6,y:py(0)-5,class:"tick",fill:"#6b7280"},svg).textContent="0 = MiniMax-M3（零点参照）";
+  }
 
   el("text",{x:(L+R)/2,y:H-14,class:"axis","text-anchor":"middle"},svg)
     .textContent="执行 X（相对基准倍数）";
@@ -174,6 +181,7 @@ function draw(){
     boxes.push({x:R-42,y:py(t)-16,w:44,h:14});
   });
   boxes.push({x:px(1)+4,y:py(MIN)-18,w:52,h:14});
+  if(MIN<0) boxes.push({x:px(MIN)+4,y:py(0)-19,w:150,h:14});
 
   const inPlot=b=>b.x>=L+PADR&&b.x+b.w<=R-PADR&&b.y>=T+PADR&&b.y+b.h<=B-PADR;
   const inter=(a,b)=>Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x))*
@@ -330,6 +338,7 @@ function showTip(d,e){
     ${d.only?`<span class="k">注意</span> 仅 ${d.only} 轴已测，位置按 P=X 假设放置<br>`:""}
     ${(d.pcov<0.35&&d.cov<0.35)?`<span class="k">证据薄</span> 两轴覆盖度都低于 35%，数值靠先验撑住，只作参考<br>`:""}
     <span class="k">拟合</span> RMSE ${d.fit.toFixed(2)} · 观测比值 ${d.rrange}${d.clamp?"（坐标已钳位到该区间）":""}<br>
+    ${d.dw?`<span class="k">降权</span> 这个模型上剖面打架的源：${d.dw}<br>`:""}
     ${d.x2!=null?`<span class="k">X2 可恢复</span> ${d.x2.toFixed(1)}%<br>`:""}
     ${raw?`<span class="k">各源比值</span> ${raw}<br>`:""}
     <span class="k">来源</span> ${d.src}<br>

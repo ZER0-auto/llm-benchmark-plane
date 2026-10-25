@@ -8,7 +8,7 @@
   4. 同一版本内只做一次比值：score / anchor_score_in_that_version
   5. 不做跨版本取中位、不做跨版本桥接
 """
-import csv, json, re, math, os
+import csv, json, re, math, os, statistics
 from collections import Counter
 from vals_map import VALS_MAP
 from aa_map import AA_MAP
@@ -47,7 +47,10 @@ def load_registry():
 
 SOURCES = load_registry()
 SECONDARY_KEY = "deepseekv4.1flash"
-LAM_DEFAULT = 0.03   # 岭回归强度：证据少时把 P/X 拉向加权均值   # 与基准不同的模型，但可作链式锚点
+LAM_DEFAULT = 0.03
+ZERO_KEY = "minimaxm3"      # 零点参照：1017=1 之外再钉一个 0（MiniMax-M3，14+ 个榜都在场）
+ZERO_OK_MAX = 0.50          # 零点超过锚点一半 → 该榜动态范围太窄，按 (1−z)/0.5 降权
+ZERO_APPLY_MAX = 0.75       # 零点超过锚点 3/4：这块榜根本分不开基准与弱模，不做零点修正（否则放大出 -4.6 这种数）   # 岭回归强度：证据少时把 P/X 拉向加权均值   # 与基准不同的模型，但可作链式锚点
 
 def norm(name):
     s = PAREN.sub("", name.strip())
@@ -241,6 +244,50 @@ def fit_px_bounded(items, lam=LAM_DEFAULT):
     return p1, x1, f"钳位到 [{lo:.2f},{hi:.2f}]（无约束解 P {p0:.3f}/X {x0:.3f} 越界）"
 
 
+def fit_px_robust(items, lam=LAM_DEFAULT, min_n=6, k=2.0, floor=0.25, rounds=8):
+    """有界解 + IRLS：某个源在**这个模型**上残差特别大，就只在这个模型上降它的权。
+
+    §15 的全局权重管的是“这个榜整体值不值得信”；这里管的是另一回事——同一个模型
+    在不同榜上的剖面打架（GPT-6 Astra 的观测比值跨 0.45~2.20），普通最小二乘会把
+    两个轴都往中间拉，让少数离谱的榜决定坐标。
+
+    稳健尺度取残差的加权 MAD（1.345×MAD），残差超过 k 倍尺度的源按 k·scale/|e| 降权，
+    最多降到 floor（0.25 倍）为止，不会被悄悄抹掉；少于 min_n 个源不做——
+    两三个源拟合两个参数，残差必然接近 0，降权没有意义。
+    返回 (P, X, 钳位说明, {源下标: 系数})。
+    """
+    p0, x0, clamp = fit_px_bounded(items, lam)
+    if p0 is None or len(items) < min_n:
+        return p0, x0, clamp, {}
+    w0 = [it[0] for it in items]
+    tw = sum(w0)
+    fac = [1.0] * len(items)
+    p, x = p0, x0
+    for _ in range(rounds):
+        pr, xr, _ = fit_px_bounded([(w0[i] * fac[i], items[i][1], items[i][2])
+                                    for i in range(len(items))], lam)
+        if pr is None:
+            break
+        res = [abs(items[i][2] - (items[i][1] * pr + (1 - items[i][1]) * xr))
+               for i in range(len(items))]
+        med = statistics.median(res)
+        dev = statistics.median([abs(v - med) for v in res])
+        scale = (1.345 * dev if dev > 0 else
+                 math.sqrt(sum(w0[i] * res[i] ** 2 for i in range(len(items))) / tw))
+        if scale <= 0:
+            break
+        new = [min(1.0, max(floor, k * scale / res[i])) if res[i] > 1e-9 else 1.0
+               for i in range(len(items))]
+        delta = max(abs(new[i] - fac[i]) for i in range(len(items)))
+        fac, p, x = new, pr, xr
+        if delta < 1e-3:
+            break
+    out = {i: f for i, f in enumerate(fac) if f < 0.999}
+    if not out:
+        return p0, x0, clamp, {}      # 没人被降权 → 保持原来的有界解
+    return p, x, clamp, out
+
+
 def fit_rmse(items, px, x_):
     tw = sum(w for w, _, _ in items)
     if not tw: return 0.0
@@ -373,61 +420,111 @@ def main():
             per_source.setdefault(slug, {})[r["key"]] = r
             anchor_of[(slug, r["version"])] = scale
 
+    # 零点参照：该榜上 MiniMax-M3 相对基准的位置 z，用来把比值重标定成 0..1..
+    #   r′ = (r − z) / (1 − z)   → 1017 仍是 1.0，MiniMax-M3 变成 0
+    # z 越接近 1 说明这块榜分不出基准与弱模，放大系数 1/(1−z) 也越大 → 同时按 ZERO_OK_MAX 降权。
+    zero_of, zero_pen, zero_skip = {}, {}, set()
+    for s, rows in per_source.items():
+        for ver in {r["version"] for r in rows.values()}:
+            a = anchor_of.get((s, ver))
+            zr = [r["value"] / a for r in rows.values() if r["version"] == ver and r["key"] == ZERO_KEY]
+            if not a or not zr: continue
+            z = zr[0]
+            zero_pen[s] = min(1.0, max(0.10, (1 - z) / ZERO_OK_MAX))
+            if z <= ZERO_APPLY_MAX:
+                zero_of[(s, ver)] = z      # 修正后量程仍可接受
+            else:
+                zero_skip.add(s)           # 只降权，不放大
+    print("零点参照（MiniMax-M3）：")
+    for s in sorted({k[0] for k in zero_of}):
+        z = [v for (ss, _), v in zero_of.items() if ss == s][0]
+        print(f"  {s:24} z={z:5.2f}  放大 {1/(1-z) if z < 1 else 0:5.2f}×  权重×{zero_pen[s]:.2f}")
+    print("  零点过高、只降权不做零点修正：" + ("、".join(sorted(zero_skip)) or "无") +
+          "；无 MiniMax-M3：" + "、".join(sorted(set(SOURCES) - {k[0] for k in zero_of} - zero_skip)))
+
     metrics = {
         "sec": {k: round(v, 4) for k, v in sec.items()},
         "dropped": {k: round(v, 2) for k, v in dropped.items()},
         "near_ceiling": near,
+        "zero_ref": ZERO_KEY,
+        "zero_z": {s: round(z, 4) for s, z in
+                   sorted({k[0]: v for k, v in zero_of.items()}.items())},
+        "zero_penalty": {s: round(v, 3) for s, v in sorted(zero_pen.items())},
+        "zero_skip": sorted(zero_skip),
         "thresholds": {"M0": 1.25, "M1": 1.00, "M2": 0.70},
     }
     with open(os.path.join(OUT, "metrics.json"), "w", encoding="utf-8") as mf:
         json.dump(metrics, mf, ensure_ascii=False, indent=1)
 
-    ev = open(os.path.join(OUT, "model_evidence.csv"), "w", newline="", encoding="utf-8-sig")
-    w = csv.writer(ev, lineterminator="\n")
-    w.writerow(["model_key", "model_id", "source_model", "source_id", "source", "axis",
-                "alpha_p", "grade", "weight", "version", "date", "raw", "anchor_raw", "ratio"])
+    def w_eff(s):
+        return SOURCES[s]["w"] * zero_pen.get(s, 1.0)
 
-    names, parts = {}, {}
+    names, parts, ev_rows = {}, {}, []
     for s, rows in per_source.items():
         alpha = SOURCES[s]["alpha"]
         ax = "P" if alpha >= 0.5 else "X"
         for k, r in rows.items():
             a = anchor_of.get((s, r["version"]))
             if not a: continue
-            ratio = r["value"] / a
+            z = zero_of.get((s, r["version"]))
+            base = r["value"] / a
+            ratio = base if z is None else (base - z) / (1 - z)
             names.setdefault(k, r["name"])
-            parts.setdefault(k, []).append((SOURCES[s]["w"], ratio, s))
-            w.writerow([k, r["name"], r.get("raw_name", r["name"]), s, SOURCES[s]["name"],
-                        ax, alpha, SOURCES[s]["grade"],
-                        SOURCES[s]["w"], r["version"], r.get("date", r["version"]),
-                        round(r["value"], 2), round(a, 2), round(ratio, 4)])
-    ev.close()
+            parts.setdefault(k, []).append((w_eff(s), ratio, s))
+            ev_rows.append((k, r, s, ax, alpha, a, ratio, base, z))
 
     used = set(per_source)
-    max_p = sum(SOURCES[s]["w"] * SOURCES[s]["alpha"] for s in used)
-    max_x = sum(SOURCES[s]["w"] * (1 - SOURCES[s]["alpha"]) for s in used)
-    plane = []
+    max_p = sum(w_eff(s) * SOURCES[s]["alpha"] for s in used)
+    max_x = sum(w_eff(s) * (1 - SOURCES[s]["alpha"]) for s in used)
+
+    fits = {}
     for k, ps in parts.items():
         p_parts = [(SOURCES[s]["w"] * SOURCES[s]["alpha"], r) for w, r, s in ps]
         x_parts = [(SOURCES[s]["w"] * (1 - SOURCES[s]["alpha"]), r) for w, r, s in ps]
         pw = sum(w for w, _ in p_parts); xw = sum(w for w, _ in x_parts)
         if pw <= 0 and xw <= 0: continue
-        items = [(SOURCES[s]["w"], SOURCES[s]["alpha"], r) for w, r, s in ps]
-        p, x, clamp = fit_px_bounded(items)
+        items = [(SOURCES[s]["w"] * zero_pen.get(s, 1.0), SOURCES[s]["alpha"], r) for w, r, s in ps]
+        p, x, clamp, fac = fit_px_robust(items)
         if p is None: continue
         if clamp: print(f"  {names[k]}: {clamp}")
+        if fac:
+            print(f"  {names[k]}: 剖面不一致，按残差降权 → " +
+                  "、".join(f"{ps[i][2]}×{fac[i]:.2f}" for i in sorted(fac)))
         rs = [r for _, r, _ in ps]
-        rmse = fit_rmse(items, p, x)
-        axis_only = ""
+        fits[k] = {"p": p, "x": x, "fac": fac, "clamp": 1 if clamp else 0,
+                   "rmse": fit_rmse(items, p, x),
+                   "dw": "+".join(f"{ps[i][2]}×{fac[i]:.2f}" for i in sorted(fac)),
+                   "lo": min(rs), "hi": max(rs),
+                   "pcov": pw / max_p if max_p else 0,
+                   "xcov": xw / max_x if max_x else 0,
+                   "ps": ps}
+
+    ev = open(os.path.join(OUT, "model_evidence.csv"), "w", newline="", encoding="utf-8-sig")
+    w = csv.writer(ev, lineterminator="\n")
+    w.writerow(["model_key", "model_id", "source_model", "source_id", "source", "axis",
+                "alpha_p", "grade", "weight", "weight_eff", "version", "date",
+                "raw", "anchor_raw", "ratio_raw", "zero_z", "ratio"])
+    for (k, r, s, ax, alpha, a, ratio, base, z) in ev_rows:
+        idx = [i for i, (ww, rr, ss) in enumerate(fits[k]["ps"]) if ss == s] if k in fits else []
+        f = fits[k]["fac"].get(idx[0], 1.0) if idx else 1.0
+        w.writerow([k, r["name"], r.get("raw_name", r["name"]), s, SOURCES[s]["name"],
+                    ax, alpha, SOURCES[s]["grade"], SOURCES[s]["w"],
+                    round(SOURCES[s]["w"] * zero_pen.get(s, 1.0) * f, 4), r["version"],
+                    r.get("date", r["version"]), round(r["value"], 2), round(a, 2),
+                    round(base, 4), "" if z is None else round(z, 4), round(ratio, 4)])
+    ev.close()
+
+    plane = []
+    for k, fit in fits.items():
+        p, x = fit["p"], fit["x"]
+        ps = fit["ps"]
         top = max(p, x)
         tier = "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
-        tag = ("P+" if (p is not None and p >= 1.25) else "") + ("X+" if (x is not None and x >= 1.25) else "")
+        tag = ("P+" if p >= 1.25 else "") + ("X+" if x >= 1.25 else "") + ("0锚" if k == ZERO_KEY else "")
         rmap = {s: r for w, r, s in ps}
-        pcov = pw / max_p if max_p else 0
-        xcov = xw / max_x if max_x else 0
-        row = [names[k], k, round(p, 3), round(x, 3), tier, tag, axis_only,
-               round(pcov, 3), round(xcov, 3), round(rmse, 3),
-               f"{min(rs):.2f}~{max(rs):.2f}", 1 if clamp else 0,
+        row = [names[k], k, round(p, 3), round(x, 3), tier, tag, "",
+               round(fit["pcov"], 3), round(fit["xcov"], 3), round(fit["rmse"], 3),
+               f"{fit['lo']:.2f}~{fit['hi']:.2f}", fit["clamp"], fit["dw"],
                "+".join(s for _, _, s in ps),
                round(x2map.get(k, -1), 1) if k in x2map else ""]
         row += [round(rmap[s], 3) if s in rmap else "" for s in ORDER]
@@ -435,7 +532,7 @@ def main():
 
     cols = ["model_id", "model_key", "P", "X", "tier", "tags", "axis_only",
             "P_coverage", "X_coverage", "fit_rmse", "ratio_range", "clamped",
-            "sources", "X2"] + \
+            "downweighted", "sources", "X2"] + \
            ["r_" + s.replace("-", "_") for s in ORDER]
     pl = open(os.path.join(OUT, "model_plane.csv"), "w", newline="", encoding="utf-8-sig")
     w = csv.writer(pl, lineterminator="\n"); w.writerow(cols)

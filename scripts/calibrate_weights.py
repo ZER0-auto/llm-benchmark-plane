@@ -25,23 +25,12 @@ MIN_SRC_PER_MODEL = 4      # 留一至少要剩下的源数（两因子要够解
 GRADE = {"A": 1.00, "A-": 0.90, "B+": 0.80, "B": 0.70, "C+": 0.55, "C": 0.40}
 
 
+# 与管道共用同一个估计器（有界 + 按残差降权），否则留一残差量的是另一套模型
+from pipeline import fit_px_robust
+
+
 def fit_px(items, lam=LAM):
-    A = B = C = D = E = 0.0
-    r0n = r0d = 0.0
-    for w, a, r in items:
-        A += w * a * a
-        B += w * a * (1 - a)
-        C += w * (1 - a) * (1 - a)
-        D += w * a * r
-        E += w * (1 - a) * r
-        r0n += w * r
-        r0d += w
-    if r0d == 0:
-        return None, None
-    r0 = r0n / r0d
-    A += lam; C += lam; D += lam * r0; E += lam * r0
-    det = A * C - B * B
-    return (D * C - E * B) / det, (E * A - D * B) / det
+    return fit_px_robust(items, lam)[:2]
 
 
 def parse_date(s):
