@@ -13,7 +13,8 @@ def num(r, k):
 data = []
 for r in rows:
     data.append({
-        "name": r["model_id"], "P": float(r["P"]), "X": float(r["X"]),
+        "name": r["model_id"], "key": r.get("model_key", r["model_id"]),
+        "P": float(r["P"]), "X": float(r["X"]),
         "tier": r["tier"], "cov": float(r["X_coverage"]), "src": r["sources"],
         "only": r.get("axis_only", ""),
         "x2": num(r, "X2"), "code": num(r, "r_code_v3"), "shi": num(r, "r_shishan"),
@@ -24,25 +25,20 @@ for r in rows:
     })
 
 ev = list(csv.DictReader(open(os.path.join(OUT, "model_evidence.csv"), encoding="utf-8-sig")))
-plotted = {d["name"] for d in data}
 dates = {}
 for e in ev:
-    d0 = e.get("version", "")
+    d0 = e.get("date") or e.get("version", "")
     if d0:
-        k = (e["model_id"], e["axis"])
+        k = (e.get("model_key", e["model_id"]), e["axis"])
         if k not in dates or d0 > dates[k]: dates[k] = d0
 for d in data:
-    d["pdate"] = dates.get((d["name"], "P"), "")
-    d["xdate"] = dates.get((d["name"], "X"), "")
-p_only = sorted({(e["model_id"], float(e["ratio"])) for e in ev
-                 if e["axis"] == "P" and e["model_id"] not in plotted}, key=lambda x: -x[1])
-x_only = sorted({(e["model_id"], float(e["ratio"])) for e in ev
-                 if e["axis"] == "X" and e["model_id"] not in plotted}, key=lambda x: -x[1])
+    d["pdate"] = dates.get((d["key"], "P"), "")
+    d["xdate"] = dates.get((d["key"], "X"), "")
 meta = {"plotted": len(data), "dual": sum(1 for d in data if not d["only"]),
         "pOnly": sum(1 for d in data if d["only"] == "P"),
         "xOnly": sum(1 for d in data if d["only"] == "X"),
-        "p": len({e["model_id"] for e in ev if e["axis"] == "P"}),
-        "x": len({e["model_id"] for e in ev if e["axis"] == "X"})}
+        "p": len({e.get("model_key", e["model_id"]) for e in ev if e["axis"] == "P"}),
+        "x": len({e.get("model_key", e["model_id"]) for e in ev if e["axis"] == "X"})}
 
 HTML = r"""<!DOCTYPE html>
 <html lang="zh-CN"><head><meta charset="utf-8">
@@ -102,7 +98,6 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 </div>
 <svg id="chart" viewBox="0 0 1240 820" role="img"></svg>
 <div class="tip" id="tip"></div>
-<div class="note" id="single"></div>
 <details><summary>展开数据表</summary><div id="tbl"></div></details>
 <div class="note">
 坐标是「相对基准模型的能力倍数」，1.0 = DeepSeek V4.1 Flash 1017。<br>
@@ -111,14 +106,12 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 缺 1017 的榜（ProofBench / MysteryMechanism / IOI）用 <b>DeepSeek V4.1 Flash 作链式锚点</b>：先在其他榜测出它相对 1017 的能力（P 0.946 / X 0.681），再以它为 1.0 折算该榜其余模型。<br>
 P = 致知 logic（0.50）+ ProofBench（0.30）+ MysteryMechanism（0.20）。X = 屎山（0.32）+ code_v3（0.28）+ Vibe Code（0.14）+ Code Migration（0.09）+ TB4（0.04）+ IOI（0.01）。<br>
 档位：取两轴中较高者，M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3。<br>
-只有一个轴有证据的模型画在 P=X 对角线上：○ 表示仅 P 已测、◇ 表示仅 X 已测。它们的位置是假设值（未知轴按已知轴填充），档位只反映已测的那一轴，不能据此推断另一轴。公开题来源合计权重 0.05。ProgramBench 因分数接近 0、比值法失效已剔除。悬停看各源原始分。
+只有一个轴有证据的模型画在 P=X 对角线上：○ 表示仅 P 已测、◇ 表示仅 X 已测。它们的位置是假设值（未知轴按已知轴填充），档位只反映已测的那一轴，不能据此推断另一轴。公开题来源合计权重 0.05。ProgramBench 不在来源表中（分数区间 0–18.5 过窄，比值法失效）；SkillsBench 因等效基准 102.44 超过 100% 被守卫剔除。悬停看各源原始分。
 </div>
 </div>
 <script>
 const DATA = __DATA__;
 const META = __META__;
-const P_ONLY = __PONLY__;
-const X_ONLY = __XONLY__;
 document.getElementById("meta").textContent =
   `有 P 证据 ${META.p} 个模型 · 有 X 证据 ${META.x} 个 · 上图 ${META.plotted} 个（双轴 ${META.dual} · 仅 P ${META.pOnly} · 仅 X ${META.xOnly}）`;
 const NS="http://www.w3.org/2000/svg";
@@ -138,7 +131,7 @@ function draw(){
   document.getElementById("count").textContent=DATA.length+" 个模型";
 
   // 档位参考线（单轴达标即可，所以只画线不画方块）
-  [[1.25,"M0","#b8860b"],[1.00,"M1","#d97706"],[0.70,"M2","#0d9488"]].forEach(([t,n,c])=>{
+  [[1.25,"M0","#b8860b"],[1.00,"M1","#2563eb"],[0.70,"M2","#0d9488"]].forEach(([t,n,c])=>{
     el("line",{x1:px(t),y1:py(MIN),x2:px(t),y2:py(MAX),stroke:c,"stroke-width":1,
       "stroke-dasharray":"4 4",opacity:t===1?0.55:0.3},svg);
     el("line",{x1:px(MIN),y1:py(t),x2:px(MAX),y2:py(t),stroke:c,"stroke-width":1,
@@ -294,8 +287,6 @@ if(document.fonts&&document.fonts.ready){document.fonts.ready.then(draw);}else{d
 
 html = HTML.replace("__DATA__", json.dumps(data, ensure_ascii=False))
 html = html.replace("__META__", json.dumps(meta, ensure_ascii=False))
-html = html.replace("__PONLY__", json.dumps(p_only, ensure_ascii=False))
-html = html.replace("__XONLY__", json.dumps(x_only, ensure_ascii=False))
 out = os.path.join(OUT, "model_plane.html")
 open(out, "w", encoding="utf-8").write(html)
 print("wrote", out, len(html), "bytes,", len(data), "points")

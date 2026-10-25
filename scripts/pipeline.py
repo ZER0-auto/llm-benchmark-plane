@@ -8,13 +8,14 @@
   4. 同一版本内只做一次比值：score / anchor_score_in_that_version
   5. 不做跨版本取中位、不做跨版本桥接
 """
-import csv, json, re, math, statistics, os
+import csv, json, re, math, os
 from collections import Counter
 from vals_map import VALS_MAP
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(BASE, "data")
 OUT = os.path.join(BASE, "out")
+os.makedirs(OUT, exist_ok=True)
 
 def months(sub):
     d = os.path.join(DATA, "zhizhi", sub)
@@ -25,6 +26,8 @@ LOGIC_MONTHS = months("logic")
 CODE_MONTHS = months("code_v3")
 
 PAREN = re.compile(r"\s*[\(（][^)）]*[\)）]\s*$")
+# 屎山榜单只写产品线现役名（DeepSeek Flash），按“同产品线只留现役一席”的规则
+# 映射到 1017；这条映射是显式假设，见 METHOD.md 与 README 已知限制。
 ALIAS = {"混元3.0": "hy3", "deepseekflash": "deepseekv4.1flash1017"}
 ANCHOR_KEY = "deepseekv4.1flash1017"
 MIN_MODELS_PER_VERSION = 5      # 版本内至少这么多个模型才可用
@@ -62,7 +65,7 @@ def load_logic():
             try: v = float(r["中位分数"])
             except (TypeError, ValueError): continue
             out.append({"key": norm(r["模型"]), "name": display(r["模型"]),
-                        "version": m, "value": v})
+                        "version": m, "date": m, "value": v})
     return out
 
 TASKS = ["Simple Model(H)", "iOS+Server(I)", "Animation(J)", "Data Process(K)",
@@ -90,7 +93,7 @@ def load_code_v3():
                 judged += 1; pts += v
             if judged < 5: continue
             out.append({"key": norm(r["Model"]), "name": display(r["Model"]),
-                        "version": m, "value": 100.0 * pts / judged})
+                        "version": m, "date": m, "value": 100.0 * pts / judged})
     return out
 
 def load_shishan():
@@ -118,7 +121,7 @@ def load_shishan():
         date = v.get("date") or ""
         x2[norm(v["name"])] = 100.0 * sum(1 for t in T.values() if "W" in t["verdicts"] and t["score"] > 0) / len(T)
         out.append({"key": norm(v["name"]), "name": v["name"],
-                    "version": "board",
+                    "version": "board", "date": (v.get("date") or "")[:10],
                     "value": 100.0 * sig(th[v["name"]] - shift)})
     return out, x2
 
@@ -134,7 +137,7 @@ def load_vals():
         cur = a.get(norm(name))
         if cur is None or acc > cur["value"]:
             a[norm(name)] = {"key": norm(name), "name": name,
-                             "version": r.get("updated", ""), "value": acc}
+                             "version": r.get("updated", ""), "date": (r.get("updated") or "")[:10], "value": acc}
     return {s: list(v.values()) for s, v in agg.items()}
 
 # ---------- 版本筛选 ----------
@@ -147,10 +150,10 @@ def usable_versions(rows, label):
         n = len(rs)
         if has_anchor and n >= MIN_MODELS_PER_VERSION:
             keep[ver] = rs
-            print(f"  {label} {ver}: {n} 个模型，含基准 ✓")
+            print(f"  {label} {ver}: {n} 个模型，含基准 OK")
         else:
             why = "缺基准" if not has_anchor else f"仅 {n} 个模型"
-            print(f"  {label} {ver}: {n} 个模型，{why} ✗ 丢弃")
+            print(f"  {label} {ver}: {n} 个模型，{why}，丢弃")
     return keep
 
 ORDER = ["logic", "proof_bench", "mysterymechanism", "shishan", "code_v3",
@@ -171,12 +174,12 @@ def main():
         if slug not in SOURCES: continue
         if any(r["key"] == ANCHOR_KEY for r in rows):
             vals_ok[slug] = rows
-            print(f"  {slug}: {len(rows)} 个模型，含基准 ✓")
+            print(f"  {slug}: {len(rows)} 个模型，含基准 OK")
         elif any(r["key"] == SECONDARY_KEY for r in rows):
             vals_chained[slug] = rows
-            print(f"  {slug}: {len(rows)} 个模型，含副锚点 DeepSeek V4.1 Flash → 链式换算")
+            print(f"  {slug}: {len(rows)} 个模型，含副锚点 DeepSeek V4.1 Flash -> 链式换算")
         else:
-            print(f"  {slug}: {len(rows)} 个模型，无可用锚点 ✗ 丢弃")
+            print(f"  {slug}: {len(rows)} 个模型，无可用锚点，丢弃")
 
     # 每个模型只取最新可用版本
     def latest(by_ver):
@@ -225,7 +228,7 @@ def main():
         if not ref: continue
         scale = ref["value"] / sec[ax]
         if scale > 100:
-            print(f"  {slug}: 等效基准 {scale:.2f} > 100%，比值法失效 ✗ 丢弃")
+            print(f"  {slug}: 等效基准 {scale:.2f} > 100%，比值法失效，丢弃")
             continue
         print(f"  {slug}: 副锚点原始 {ref['value']:.2f} / 相对 {sec[ax]:.4f} -> 等效基准 {scale:.2f}")
         for r in rows:
@@ -237,7 +240,7 @@ def main():
 
     ev = open(os.path.join(OUT, "model_evidence.csv"), "w", newline="", encoding="utf-8-sig")
     w = csv.writer(ev)
-    w.writerow(["model_id", "source", "axis", "grade", "weight", "version", "raw", "anchor_raw", "ratio"])
+    w.writerow(["model_key", "model_id", "source", "axis", "grade", "weight", "version", "date", "raw", "anchor_raw", "ratio"])
 
     names, parts = {}, {}
     for s, rows in per_source.items():
@@ -248,8 +251,8 @@ def main():
             ratio = r["value"] / a
             names.setdefault(k, r["name"])
             parts.setdefault(k, []).append((SOURCES[s][2], ratio, s, ax))
-            w.writerow([r["name"], SOURCES[s][0], ax, SOURCES[s][3], SOURCES[s][2],
-                        r["version"], round(r["value"], 2), round(a, 2), round(ratio, 4)])
+            w.writerow([k, r["name"], SOURCES[s][0], ax, SOURCES[s][3], SOURCES[s][2],
+                        r["version"], r.get("date", r["version"]), round(r["value"], 2), round(a, 2), round(ratio, 4)])
     ev.close()
 
     plane = []
@@ -266,20 +269,21 @@ def main():
         tier = "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
         tag = ("P+" if (p_parts and p >= 1.25) else "") + ("X+" if (x_parts and x >= 1.25) else "")
         rmap = {s: r for wt, r, s, ax in ps}
-        row = [names[k], round(p, 3), round(x, 3), tier, tag, axis_only,
+        row = [names[k], k, round(p, 3), round(x, 3), tier, tag, axis_only,
                round(sum(wt for wt, _ in x_parts), 2),
                "+".join(s for _, _, s, _ in ps),
                round(x2map.get(k, -1), 1) if k in x2map else ""]
         row += [round(rmap[s], 3) if s in rmap else "" for s in ORDER]
         plane.append(row)
 
-    cols = ["model_id", "P", "X", "tier", "tags", "axis_only", "X_coverage", "sources", "X2"] +            ["r_" + s.replace("-", "_") for s in ORDER]
+    cols = ["model_id", "model_key", "P", "X", "tier", "tags", "axis_only", "X_coverage", "sources", "X2"] + \
+           ["r_" + s.replace("-", "_") for s in ORDER]
     pl = open(os.path.join(OUT, "model_plane.csv"), "w", newline="", encoding="utf-8-sig")
     w = csv.writer(pl); w.writerow(cols)
-    for r in sorted(plane, key=lambda x: (-x[1], -x[2])): w.writerow(r)
+    for r in sorted(plane, key=lambda x: (-x[2], -x[3])): w.writerow(r)
     pl.close()
 
-    print(f"\nplane={len(plane)} tiers={dict(Counter(r[3] for r in plane))}")
+    print(f"\nplane={len(plane)} tiers={dict(Counter(r[4] for r in plane))}")
     print("基准分（各源各版本）：", {f"{k[0]}@{k[1]}": round(v, 2) for k, v in anchor_of.items()})
 
 if __name__ == "__main__":
