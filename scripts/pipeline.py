@@ -195,7 +195,20 @@ def fit_px(items, lam=LAM_DEFAULT):
     return (D * C - E * B) / det, (E * A - D * B) / det
 
 
-def fit_px_bounded(items, lam=LAM_DEFAULT):
+def ratio_bounds(vals):
+    """可校准的比值区间：≥4 个观测取 p10~p90（单个异常榜不能定天花板），否则 min~max。"""
+    v = sorted(vals)
+    if len(v) < 4:
+        return v[0], v[-1]
+
+    def q(frac):
+        i = (len(v) - 1) * frac
+        lo = int(i); hi = min(lo + 1, len(v) - 1)
+        return v[lo] + (v[hi] - v[lo]) * (i - lo)
+    return q(0.10), q(0.90)
+
+
+def fit_px_bounded(items, lam=LAM_DEFAULT, bounds=None):
     """同 fit_px，但把 P、X 限制在该模型观测比值的区间 [min r, max r] 内。
 
     无约束解会外推：某模型所有榜的比值最高只有 0.94，回归却可能给出 X=1.2——
@@ -206,7 +219,7 @@ def fit_px_bounded(items, lam=LAM_DEFAULT):
     if not items:
         return None, None, ""
     rs = [r for _, _, r in items]
-    lo, hi = min(rs), max(rs)
+    lo, hi = bounds if bounds else (min(rs), max(rs))
     p0, x0 = fit_px(items, lam)
     if p0 is None:
         return None, None, ""
@@ -244,7 +257,7 @@ def fit_px_bounded(items, lam=LAM_DEFAULT):
     return p1, x1, f"钳位到 [{lo:.2f},{hi:.2f}]（无约束解 P {p0:.3f}/X {x0:.3f} 越界）"
 
 
-def fit_px_robust(items, lam=LAM_DEFAULT, min_n=6, k=2.0, floor=0.25, rounds=8):
+def fit_px_robust(items, lam=LAM_DEFAULT, min_n=6, k=2.0, floor=0.25, rounds=8, bounds=None):
     """有界解 + IRLS：某个源在**这个模型**上残差特别大，就只在这个模型上降它的权。
 
     §15 的全局权重管的是“这个榜整体值不值得信”；这里管的是另一回事——同一个模型
@@ -256,7 +269,7 @@ def fit_px_robust(items, lam=LAM_DEFAULT, min_n=6, k=2.0, floor=0.25, rounds=8):
     两三个源拟合两个参数，残差必然接近 0，降权没有意义。
     返回 (P, X, 钳位说明, {源下标: 系数})。
     """
-    p0, x0, clamp = fit_px_bounded(items, lam)
+    p0, x0, clamp = fit_px_bounded(items, lam, bounds)
     if p0 is None or len(items) < min_n:
         return p0, x0, clamp, {}
     w0 = [it[0] for it in items]
@@ -265,7 +278,7 @@ def fit_px_robust(items, lam=LAM_DEFAULT, min_n=6, k=2.0, floor=0.25, rounds=8):
     p, x = p0, x0
     for _ in range(rounds):
         pr, xr, _ = fit_px_bounded([(w0[i] * fac[i], items[i][1], items[i][2])
-                                    for i in range(len(items))], lam)
+                                    for i in range(len(items))], lam, bounds)
         if pr is None:
             break
         res = [abs(items[i][2] - (items[i][1] * pr + (1 - items[i][1]) * xr))
@@ -470,7 +483,7 @@ def main():
             base = r["value"] / a
             ratio = base if z is None else (base - z) / (1 - z)
             names.setdefault(k, r["name"])
-            parts.setdefault(k, []).append((w_eff(s), ratio, s))
+            parts.setdefault(k, []).append((w_eff(s), ratio, s, z is not None))
             ev_rows.append((k, r, s, ax, alpha, a, ratio, base, z))
 
     used = set(per_source)
@@ -479,18 +492,22 @@ def main():
 
     fits = {}
     for k, ps in parts.items():
-        p_parts = [(SOURCES[s]["w"] * SOURCES[s]["alpha"], r) for w, r, s in ps]
-        x_parts = [(SOURCES[s]["w"] * (1 - SOURCES[s]["alpha"]), r) for w, r, s in ps]
+        p_parts = [(SOURCES[s]["w"] * SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
+        x_parts = [(SOURCES[s]["w"] * (1 - SOURCES[s]["alpha"]), r) for w, r, s, _f in ps]
         pw = sum(w for w, _ in p_parts); xw = sum(w for w, _ in x_parts)
         if pw <= 0 and xw <= 0: continue
-        items = [(SOURCES[s]["w"] * zero_pen.get(s, 1.0), SOURCES[s]["alpha"], r) for w, r, s in ps]
-        p, x, clamp, fac = fit_px_robust(items)
+        items = [(w, SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
+        # 界只由做过零点修正的榜决定：没修正的榜零点不同（多半是原始 0），
+        # 让它们去顶天花板就等于把坐标重新拉回外推（Mistral Large 4 的 X=1.235 是这么来的）
+        zsrc = [r for w, r, s, f in ps if f]
+        bounds = ratio_bounds(zsrc) if len(zsrc) >= 4 else ratio_bounds([r for _, r, _, _ in ps])
+        p, x, clamp, fac = fit_px_robust(items, bounds=bounds)
         if p is None: continue
         if clamp: print(f"  {names[k]}: {clamp}")
         if fac:
             print(f"  {names[k]}: 剖面不一致，按残差降权 → " +
                   "、".join(f"{ps[i][2]}×{fac[i]:.2f}" for i in sorted(fac)))
-        rs = [r for _, r, _ in ps]
+        rs = [r for _, r, _, _f in ps]
         fits[k] = {"p": p, "x": x, "fac": fac, "clamp": 1 if clamp else 0,
                    "rmse": fit_rmse(items, p, x),
                    "dw": "+".join(f"{ps[i][2]}×{fac[i]:.2f}" for i in sorted(fac)),
@@ -505,7 +522,7 @@ def main():
                 "alpha_p", "grade", "weight", "weight_eff", "version", "date",
                 "raw", "anchor_raw", "ratio_raw", "zero_z", "ratio"])
     for (k, r, s, ax, alpha, a, ratio, base, z) in ev_rows:
-        idx = [i for i, (ww, rr, ss) in enumerate(fits[k]["ps"]) if ss == s] if k in fits else []
+        idx = [i for i, (ww, rr, ss, _f) in enumerate(fits[k]["ps"]) if ss == s] if k in fits else []
         f = fits[k]["fac"].get(idx[0], 1.0) if idx else 1.0
         w.writerow([k, r["name"], r.get("raw_name", r["name"]), s, SOURCES[s]["name"],
                     ax, alpha, SOURCES[s]["grade"], SOURCES[s]["w"],
@@ -521,11 +538,11 @@ def main():
         top = max(p, x)
         tier = "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
         tag = ("P+" if p >= 1.25 else "") + ("X+" if x >= 1.25 else "") + ("0锚" if k == ZERO_KEY else "")
-        rmap = {s: r for w, r, s in ps}
+        rmap = {s: r for w, r, s, _f in ps}
         row = [names[k], k, round(p, 3), round(x, 3), tier, tag, "",
                round(fit["pcov"], 3), round(fit["xcov"], 3), round(fit["rmse"], 3),
                f"{fit['lo']:.2f}~{fit['hi']:.2f}", fit["clamp"], fit["dw"],
-               "+".join(s for _, _, s in ps),
+               "+".join(s for _, _, s, _f in ps),
                round(x2map.get(k, -1), 1) if k in x2map else ""]
         row += [round(rmap[s], 3) if s in rmap else "" for s in ORDER]
         plane.append(row)

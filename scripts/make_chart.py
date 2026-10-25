@@ -137,8 +137,9 @@ document.getElementById("meta").textContent =
 const NS="http://www.w3.org/2000/svg";
 const svg=document.getElementById("chart"), tip=document.getElementById("tip");
 const W=1420,H=900,L=92,R=1330,T=60,B=812;
-const MAX=Math.max(1.8, Math.ceil(Math.max(...DATA.map(d=>Math.max(d.P,d.X)))*10)/10);
-const MIN=Math.min(0, Math.floor(Math.min(...DATA.map(d=>Math.min(d.P,d.X)))*10)/10);
+const PLOT=DATA.filter(d=>d.P>=0&&d.X>=0);   // 坐标为负（低于零点 MiniMax-M3）的不画进图，只在下方表格里给
+const MAX=Math.max(1.8, Math.ceil(Math.max(...PLOT.map(d=>Math.max(d.P,d.X)))*10)/10);
+const MIN=0;
 const px=v=>L+(v-MIN)/(MAX-MIN)*(R-L), py=v=>B-(v-MIN)/(MAX-MIN)*(B-T);
 const COLOR={M0:"var(--m0)",M1:"var(--m1)",M2:"var(--m2)",M3:"var(--m3)"};
 let pinned=null;
@@ -149,7 +150,8 @@ function f(v){return v==null?"—":(Math.round(v*100)/100).toFixed(2);}
 
 function draw(){
   svg.innerHTML="";
-  document.getElementById("count").textContent=DATA.length+" 个模型";
+  document.getElementById("count").textContent=PLOT.length+" 个模型"+
+    (PLOT.length<DATA.length?`（另有 ${DATA.length-PLOT.length} 个坐标为负，不画在图上，见下方表格）`:"");
 
   // 档位参考线（单轴达标即可，所以只画线不画方块）
   [[1.25,"M0","#b8860b"],[1.00,"M1","#2563eb"],[0.70,"M2","#0d9488"]].forEach(([t,n,c])=>{
@@ -161,10 +163,10 @@ function draw(){
     el("text",{x:px(MAX)-4,y:py(t)-5,class:"tick",fill:c,"text-anchor":"end"},svg).textContent=t.toFixed(2);
   });
   el("text",{x:px(1)+6,y:py(MIN)-6,class:"tick",fill:"#b45309"},svg).textContent="基准 1.0";
+  el("text",{x:px(0)+6,y:py(MAX)+12,class:"tick",fill:"#6b7280"},svg).textContent="0 = MiniMax-M3";
   if(MIN<0){
     el("line",{x1:px(MIN),y1:py(0),x2:px(MAX),y2:py(0),stroke:"#6b7280","stroke-width":1,
       "stroke-dasharray":"2 3",opacity:0.5},svg);
-    el("text",{x:px(MIN)+6,y:py(0)-5,class:"tick",fill:"#6b7280"},svg).textContent="0 = MiniMax-M3（零点参照）";
   }
 
   el("text",{x:(L+R)/2,y:H-14,class:"axis","text-anchor":"middle"},svg)
@@ -175,13 +177,13 @@ function draw(){
   // 标签排布：点标记、参考线刻度都算障碍；先就近贪心，再对残余重叠做第二轮外扩
   const GAP=2.5, PADR=2;
   const boxes=[];
-  DATA.forEach(d=>{ boxes.push({x:px(d.X)-7,y:py(d.P)-7,w:14,h:14}); });
+  PLOT.forEach(d=>{ boxes.push({x:px(d.X)-7,y:py(d.P)-7,w:14,h:14}); });
   [[1.25,"M0"],[1.00,"M1"],[0.70,"M2"]].forEach(([t])=>{
     boxes.push({x:px(t)+3,y:T+1,w:52,h:14});
     boxes.push({x:R-42,y:py(t)-16,w:44,h:14});
   });
   boxes.push({x:px(1)+4,y:py(MIN)-18,w:52,h:14});
-  if(MIN<0) boxes.push({x:px(MIN)+4,y:py(0)-19,w:150,h:14});
+  boxes.push({x:px(0)+4,y:py(MAX)+6,w:86,h:14});
 
   const inPlot=b=>b.x>=L+PADR&&b.x+b.w<=R-PADR&&b.y>=T+PADR&&b.y+b.h<=B-PADR;
   const inter=(a,b)=>Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x))*
@@ -218,7 +220,7 @@ function draw(){
   }
 
   const placed=[];
-  const sorted=DATA.slice().sort((a,b)=>Math.max(b.P,b.X)-Math.max(a.P,a.X)||b.P-a.P);
+  const sorted=PLOT.slice().sort((a,b)=>Math.max(b.P,b.X)-Math.max(a.P,a.X)||b.P-a.P);
   sorted.forEach(d=>{
     const thin=(d.pcov<0.35&&d.cov<0.35);      // 两轴证据都薄：标记但不剔除
     const g=el("g",{class:thin?"pt thin":"pt","data-name":d.name},svg);
@@ -361,9 +363,9 @@ q.addEventListener("input",()=>{
 });
 
 const tbl=document.getElementById("tbl");
-tbl.innerHTML="<table><thead><tr><th>模型</th><th>P</th><th>X</th><th>档位</th><th>轴</th><th>P 覆盖</th><th>X 覆盖</th><th>来源</th></tr></thead><tbody>"+
+tbl.innerHTML="<table><thead><tr><th>模型</th><th>P</th><th>X</th><th>档位</th><th>在图上</th><th>P 覆盖</th><th>X 覆盖</th><th>来源</th></tr></thead><tbody>"+
  DATA.slice().sort((a,b)=>b.P-a.P).map(d=>`<tr><td>${d.name}</td>
- <td>${f(d.P)}</td><td>${f(d.X)}</td><td>${d.tier}</td><td>${d.only||"双轴"}</td>
+ <td>${f(d.P)}</td><td>${f(d.X)}</td><td>${d.tier}</td><td>${(d.P>=0&&d.X>=0)?"是":"否（坐标为负）"}</td>
  <td>${(d.pcov*100).toFixed(0)}%</td><td>${(d.cov*100).toFixed(0)}%</td><td style="text-align:left;color:#6b7280">${d.src}</td></tr>`).join("")+
  "</tbody></table>";
 

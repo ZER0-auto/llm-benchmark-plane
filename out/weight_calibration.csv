@@ -1,28 +1,28 @@
 ﻿source_id,name,public,grade,models,updated,quality,spread,loo_rmse,w_prior,w_cal,delta
-vibe-code,Vals Vibe Code,private,A,45,2026-10-24,0.921,0.609,0.2999,0.14,0.3647,0.2247
-proof_bench,Vals ProofBench,private,A,34,2026-10-20,0.9,0.711,0.4875,0.3,0.2708,-0.0292
-legal_research,Legal Research Bench,private,B,44,2026-10-24,0.644,0.867,0.5095,0.05,0.2268,0.1768
-code-migration-v1-1,Vals Code Migration,private,A,19,2026-10-20,0.839,0.374,0.2657,0.09,0.2262,0.1362
-logic,致知 logic,private,A,39,2026-10,0.729,0.698,0.4961,0.5,0.2118,-0.2882
-mysterymechanism,Vals MysteryMechanism,private,A,22,2026-10-20,0.856,0.53,0.4731,0.2,0.1973,-0.0027
-shishan,屎山挑战赛,private,A,9,2026-10-19,0.728,0.156,0.1181,0.32,0.154,-0.166
-tax_agent_bench,Tax Agent Bench,private,B,42,2026-10-24,0.642,0.473,0.4457,0.04,0.1393,0.0993
-code_v3,致知 code_v3,private,A-,10,2026-10,0.537,0.42,0.3302,0.28,0.1348,-0.1452
-terminal-bench-4,Terminal-Bench 4,public,B,36,2026-10-24,0.633,0.632,0.5008,0.04,0.0974,0.0574
-swebench-multimodal,SWE-bench Multimodal,public,B,17,2026-10-16,0.577,0.444,0.3721,0.03,0.0815,0.0515
-cyber,CyberBench v1.1,private,B,30,2026-10-12,0.622,0.597,1.0115,0.05,0.0796,0.0296
-hlab,Harvey Legal Agent Bench,public,B+,19,2026-10-24,0.671,0.417,0.4768,0.05,0.0712,0.0212
-ioi,IOI,public,B,31,2026-10-20,0.624,0.466,0.6009,0.01,0.0599,0.0499
-aa_critpt,AA CritPT,public,B,9,2026-10-25,0.509,0.342,0.3551,0.02,0.0577,0.0377
-aa_hle,AA HLE,public,A-,9,2026-10-25,0.655,0.214,0.3806,0.03,0.0437,0.0137
-aa_automation,AA AutomationBench,public,B,9,2026-10-25,0.509,0.189,0.2643,0.03,0.0411,0.0111
-skillsbench,SkillsBench,public,B,20,2026-09-27,0.532,0.3,0.6552,0.04,0.0304,-0.0096
-medcode,MedCode,private,B,36,2026-10-13,0.633,0.153,0.7311,0.04,0.0282,-0.0118
-fabv2-1,Finance Agent v2,private,B+,22,2026-10-24,0.685,0.058,0.3091,0.06,0.0254,-0.0346
-emb-v1-1,EMB,private,B+,24,2026-10-24,0.693,0.056,0.3137,0.08,0.0243,-0.0557
-sage,SAGE,private,A,29,2026-10-08,0.797,0.106,0.7491,0.1,0.0241,-0.0759
-aa_scicode,AA SciCode,public,B,9,2026-10-25,0.509,0.101,0.248,0.02,0.023,0.003
-public-benefits-bench,Public Benefits Bench,private,B,27,2026-10-12,0.615,0.086,0.5311,0.03,0.0208,-0.0092
-biomysterybench,BioMysteryBench,public,B,21,2026-10-20,0.596,0.086,0.3086,0.03,0.0192,-0.0108
-legal_bench,LegalBench,public,A-,26,2026-10-13,0.787,0.031,0.7921,0.06,0.0039,-0.0561
-aa_lcr,AA Long Context Reasoning,public,A-,9,2026-10-25,0.655,0.02,0.523,0.02,0.0031,-0.0169
+vibe-code,Vals Vibe Code,private,A,45,2026-10-24,0.921,0.609,0.3092,0.14,0.3593,0.2193
+proof_bench,Vals ProofBench,private,A,34,2026-10-20,0.9,0.703,0.4772,0.3,0.2761,-0.0239
+legal_research,Legal Research Bench,private,B,44,2026-10-24,0.644,0.867,0.4932,0.05,0.2363,0.1863
+logic,致知 logic,private,A,39,2026-10,0.729,0.698,0.4498,0.5,0.2341,-0.2659
+code-migration-v1-1,Vals Code Migration,private,A,19,2026-10-20,0.839,0.374,0.2701,0.09,0.2257,0.1357
+mysterymechanism,Vals MysteryMechanism,private,A,22,2026-10-20,0.856,0.525,0.4709,0.2,0.1984,-0.0016
+tax_agent_bench,Tax Agent Bench,private,B,42,2026-10-24,0.642,0.473,0.4436,0.04,0.1415,0.1015
+code_v3,致知 code_v3,private,A-,10,2026-10,0.537,0.42,0.3317,0.28,0.1358,-0.1442
+shishan,屎山挑战赛,private,A,9,2026-10-19,0.728,0.152,0.1517,0.32,0.1261,-0.1939
+terminal-bench-4,Terminal-Bench 4,public,B,36,2026-10-24,0.633,0.632,0.5043,0.04,0.0975,0.0575
+swebench-multimodal,SWE-bench Multimodal,public,B,17,2026-10-16,0.577,0.405,0.37,0.03,0.0752,0.0452
+cyber,CyberBench v1.1,private,B,30,2026-10-12,0.622,0.524,0.9737,0.05,0.0732,0.0232
+hlab,Harvey Legal Agent Bench,public,B+,19,2026-10-24,0.671,0.417,0.477,0.05,0.0718,0.0218
+aa_critpt,AA CritPT,public,B,9,2026-10-25,0.509,0.342,0.3265,0.02,0.0626,0.0426
+ioi,IOI,public,B,31,2026-10-20,0.624,0.455,0.5891,0.01,0.0601,0.0501
+aa_hle,AA HLE,public,A-,9,2026-10-25,0.655,0.214,0.3496,0.03,0.0475,0.0175
+aa_automation,AA AutomationBench,public,B,9,2026-10-25,0.509,0.189,0.2655,0.03,0.0413,0.0113
+medcode,MedCode,private,B,36,2026-10-13,0.633,0.149,0.7224,0.04,0.028,-0.012
+skillsbench,SkillsBench,public,B,20,2026-09-27,0.532,0.274,0.6581,0.04,0.0279,-0.0121
+fabv2-1,Finance Agent v2,private,B+,22,2026-10-24,0.685,0.058,0.3215,0.06,0.0248,-0.0352
+sage,SAGE,private,A,29,2026-10-08,0.797,0.105,0.7305,0.1,0.0248,-0.0752
+emb-v1-1,EMB,private,B+,24,2026-10-24,0.693,0.056,0.3261,0.08,0.0238,-0.0562
+aa_scicode,AA SciCode,public,B,9,2026-10-25,0.509,0.101,0.2554,0.02,0.0227,0.0027
+public-benefits-bench,Public Benefits Bench,private,B,27,2026-10-12,0.615,0.084,0.532,0.03,0.0204,-0.0096
+biomysterybench,BioMysteryBench,public,B,21,2026-10-20,0.596,0.085,0.3223,0.03,0.0183,-0.0117
+legal_bench,LegalBench,public,A-,26,2026-10-13,0.787,0.031,0.7748,0.06,0.0039,-0.0561
+aa_lcr,AA Long Context Reasoning,public,A-,9,2026-10-25,0.655,0.02,0.5065,0.02,0.0032,-0.0168

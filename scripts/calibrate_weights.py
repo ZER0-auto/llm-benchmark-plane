@@ -26,11 +26,12 @@ GRADE = {"A": 1.00, "A-": 0.90, "B+": 0.80, "B": 0.70, "C+": 0.55, "C": 0.40}
 
 
 # 与管道共用同一个估计器（有界 + 按残差降权），否则留一残差量的是另一套模型
-from pipeline import fit_px_robust
+from pipeline import fit_px_robust, ratio_bounds
 
 
-def fit_px(items, lam=LAM):
-    return fit_px_robust(items, lam)[:2]
+def fit_px(items, lam=LAM, bounds=None):
+    """与管道同一个估计器（有界 + 按残差降权），界也同一套取法。"""
+    return fit_px_robust(items, lam, bounds=bounds)[:2]
 
 
 def parse_date(s):
@@ -80,7 +81,7 @@ def main():
         except ValueError:
             continue
         alpha = float(r["alpha_p"])
-        per_model.setdefault(r["model_key"], []).append((sid, alpha, ratio))
+        per_model.setdefault(r["model_key"], []).append((sid, alpha, ratio, r["zero_z"] != ""))
         per_src.setdefault(sid, []).append(ratio)
 
     ids = sorted(per_src)
@@ -108,15 +109,20 @@ def main():
     w = {s: float(meta[s]["weight_prior"]) for s in ids}   # 起点固定为先验，保证可复现
     total = sum(w.values())
 
+    def bounds_of(items):
+        z = [it[2] for it in items if it[3]]
+        return ratio_bounds(z) if len(z) >= 4 else ratio_bounds([it[2] for it in items])
+
     def loo_errors(weights):
         """留一残差：每个源在多少模型上被其余源反驳。"""
         res = {s: [] for s in ids}
         for _, items in per_model.items():
             if len(items) < MIN_SRC_PER_MODEL:
                 continue
-            for i, (sid, alpha, ratio) in enumerate(items):
-                rest = [(weights[s2], a2, r2) for j, (s2, a2, r2) in enumerate(items) if j != i]
-                p, x = fit_px(rest)
+            bd = bounds_of(items)
+            for i, (sid, alpha, ratio, _f) in enumerate(items):
+                rest = [(weights[sid2], a2, r2) for j, (sid2, a2, r2, _g) in enumerate(items) if j != i]
+                p, x = fit_px(rest, LAM, bd)
                 if p is None:
                     continue
                 res[sid].append(ratio - (alpha * p + (1 - alpha) * x))
@@ -129,8 +135,8 @@ def main():
     def composite(weights):
         out = []
         for _, items in per_model.items():
-            num = sum(weights[s] * r for s, _, r in items)
-            den = sum(weights[s] for s, _, r in items)
+            num = sum(weights[s] * r for s, _a, r, _f in items)
+            den = sum(weights[s] for s, _a, r, _f in items)
             if den:
                 out.append(num / den)
         return out
@@ -188,7 +194,7 @@ def main():
     def pxtier(weights):
         out = {}
         for k, items in per_model.items():
-            p, x = fit_px([(weights[s], a, r) for s, a, r in items])
+            p, x = fit_px([(weights[s], a, r) for s, a, r, _f in items], LAM, bounds_of(items))
             if p is None:
                 continue
             top = max(p, x)
