@@ -60,15 +60,16 @@ scripts/
   pipeline.py    归一化与定档
   make_chart.py  生成自包含交互图
 out/
-  model_evidence.csv   每个模型每个来源的原始分、版本、基准分、比值
-  model_plane.csv      最终平面：P / X / 档位 / 标签 / 来源
+  model_evidence.csv   逐源证据：model_key（规范键）、model_id（源站原名）、版本、日期、原始分、基准分、比值
+  model_plane.csv      最终平面：model_key、P / X、档位、标签、来源、X 覆盖
   model_plane.html     交互图
+  metrics.json         本次运行算出的链式基准与守卫值（注入图表脚注）
 ```
 
 ## 口径摘要
 
 - **P 轴**：致知 logic（0.50）+ Vals ProofBench（0.30）+ Vals MysteryMechanism（0.20）
-- **X 轴**：屎山（0.32）+ 致知 code_v3（0.28）+ Vibe Code（0.14）+ Code Migration（0.09）+ Terminal-Bench 4（0.04）+ IOI（0.01）——合计 0.88，按 Σw 归一
+- **X 轴**：屎山（0.32）+ 致知 code_v3（0.28）+ Vibe Code（0.14）+ Code Migration（0.09）+ Terminal-Bench 4（0.04）+ IOI（0.01）——合计 0.88，按 Σw 归一（SkillsBench 0.04 当前被守卫剔除，未计入）
 - **版本规则**：致知按月切版本，版本内必须含基准模型，否则整版丢弃；屎山是阶梯加题，整块算一个版本
 - **链式基准**：缺基准的榜用次新 Flash（`deepseek-v4.1-flash`）作锚点，先测出它相对基准的能力（P 0.946 / X 0.681），再折算其余模型
 - **档位**：取两轴较高者 —— M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3
@@ -93,4 +94,4 @@ out/
 3. **档位阈值是暂定值**：1.25 / 1.00 / 0.70 还没有经过多轮数据校准。
 4. **公开题权重很低**：Terminal-Bench 4、IOI 等公开题合计权重 0.05，仅作补充。
 5. **链式基准依赖次新 Flash**：次新模型自身的能力估计会随主榜更新而变，历史快照不可直接横比。
-6. **屎山的现役名映射**：榜单只写 `DeepSeek Flash`，按站内“同产品线只留现役一席”的规则视为 1017；站方没有标注版本号，这条映射是假设。
+6. **跨源别名是假设**：屎山的 `DeepSeek Flash` 按“同产品线只留现役一席”视为 1017，`混元 3.0` 与 `Hy3` 视为同一模型；源站没有版本号或统一命名，映射写在 `pipeline.py` 的 `ALIAS` 里。

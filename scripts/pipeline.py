@@ -118,7 +118,6 @@ def load_shishan():
     for slug, v in d.items():
         if v.get("disputed"): continue
         T = {t["id"]: t for t in v["topics"]}
-        date = v.get("date") or ""
         x2[norm(v["name"])] = 100.0 * sum(1 for t in T.values() if "W" in t["verdicts"] and t["score"] > 0) / len(T)
         out.append({"key": norm(v["name"]), "name": v["name"],
                     "version": "board", "date": (v.get("date") or "")[:10],
@@ -220,6 +219,7 @@ def main():
     print("副锚点 DeepSeek V4.1 Flash 相对能力：P=%.4f X=%.4f" % (sec.get("P", 0), sec.get("X", 0)))
 
     # 链式：用副锚点把缺主锚点的榜单接进来
+    dropped = {}
     for slug, rows in vals_chained.items():
         ax = SOURCES[slug][1]
         if ax not in sec: 
@@ -229,17 +229,24 @@ def main():
         scale = ref["value"] / sec[ax]
         if scale > 100:
             print(f"  {slug}: 等效基准 {scale:.2f} > 100%，比值法失效，丢弃")
+            dropped[slug] = scale
             continue
         print(f"  {slug}: 副锚点原始 {ref['value']:.2f} / 相对 {sec[ax]:.4f} -> 等效基准 {scale:.2f}")
         for r in rows:
             if r["key"] == SECONDARY_KEY: continue
             per_source.setdefault(slug, {})[r["key"]] = r
             anchor_of[(slug, r["version"])] = scale
-        # 副锚点自身也按这个尺度记一次（不重复计入权重，仅补齐证据表）
-        anchor_of.setdefault((slug, ref["version"]), scale)
+
+    metrics = {
+        "sec": {k: round(v, 4) for k, v in sec.items()},
+        "dropped": {k: round(v, 2) for k, v in dropped.items()},
+        "thresholds": {"M0": 1.25, "M1": 1.00, "M2": 0.70},
+    }
+    with open(os.path.join(OUT, "metrics.json"), "w", encoding="utf-8") as mf:
+        json.dump(metrics, mf, ensure_ascii=False, indent=1)
 
     ev = open(os.path.join(OUT, "model_evidence.csv"), "w", newline="", encoding="utf-8-sig")
-    w = csv.writer(ev)
+    w = csv.writer(ev, lineterminator="\n")
     w.writerow(["model_key", "model_id", "source", "axis", "grade", "weight", "version", "date", "raw", "anchor_raw", "ratio"])
 
     names, parts = {}, {}
@@ -279,7 +286,7 @@ def main():
     cols = ["model_id", "model_key", "P", "X", "tier", "tags", "axis_only", "X_coverage", "sources", "X2"] + \
            ["r_" + s.replace("-", "_") for s in ORDER]
     pl = open(os.path.join(OUT, "model_plane.csv"), "w", newline="", encoding="utf-8-sig")
-    w = csv.writer(pl); w.writerow(cols)
+    w = csv.writer(pl, lineterminator="\n"); w.writerow(cols)
     for r in sorted(plane, key=lambda x: (-x[2], -x[3])): w.writerow(r)
     pl.close()
 

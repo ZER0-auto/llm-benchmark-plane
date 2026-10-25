@@ -46,7 +46,3 @@ VALS_MAP = {
     "stepfun/step-5-preview": "Step 5 Preview",
 }
 
-# Vals 榜单 → 用途
-VALS_PRIVATE = ["vibe-code", "code-migration-v1-1"]
-VALS_TB4 = ["terminal-bench-4"]
-VALS_REFERENCE = ["skillsbench", "programbench", "swebench", "ioi"]   # 公开题，仅参考不记分
