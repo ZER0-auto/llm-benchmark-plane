@@ -73,6 +73,10 @@ svg{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--
 .zone-l{font-size:11px;fill:#b6bcc6;letter-spacing:1px}
 .pt{cursor:pointer}
 .pt text{font-size:10.5px;fill:#3f4650;paint-order:stroke;stroke:#fff;stroke-width:2.6px;stroke-linejoin:round}
+.pt.thin text{opacity:.66}
+.pt.thin .conn{opacity:.45}
+.pt.hid text,.pt.hid .conn{display:none}
+.pt.hid.hl text{display:inline;opacity:.95}
 .pt.dim{opacity:.12}
 .conn{stroke-width:.8;opacity:.45}
 .pt.hl .conn{opacity:1;stroke-width:1.5}
@@ -102,7 +106,9 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
   <span><i style="background:var(--m1)"></i>M1（任一轴 ≥1.00）</span>
   <span><i style="background:var(--m2)"></i>M2（任一轴 ≥0.70）</span>
   <span><i style="background:var(--m3)"></i>M3</span>
-  <span>● 双轴已测　○ 仅 P（按 P=X 落点）　◇ 仅 X（按 P=X 落点）</span>
+  <span>● 双轴已测　○ 仅 P　◇ 仅 X</span>
+  <span><i style="background:none;border:1.5px dashed #9aa1ac"></i>证据薄（两轴覆盖度都 &lt;35%）</span>
+  <span>放不下时按档位隐藏标签（<b id="hidn">0</b> 个），悬停仍显示名字</span>
 </div>
 <svg id="chart" viewBox="0 0 1420 900" role="img"></svg>
 <div class="tip" id="tip"></div>
@@ -116,7 +122,7 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 权重已按留一残差校准（<code>scripts/calibrate_weights.py</code>，口径见 METHOD §15）：注册表里 <code>weight_prior</code> 是初猜、<code>weight_cal</code> 是校准值，管道优先用后者；公开源占比按上限 0.20 配平。<br>
 Artificial Analysis 只用分项（HLE / AA-LCR / CritPT / SciCode / AutomationBench），不使用它的综合指数；Omniscience 因分数跨度过大暂不计分。<br>
 档位：取两轴中较高者，M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3。<br>
-若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。覆盖度（tooltip 里 P x% · X x%）低于 30% 时数值会被先验拉向 1.0 附近，谨慎解读。本轮守卫剔除：__DROPPED__（等效基准超过该榜满分、或不足满分 5%，比值失真）；接近满分的榜：__NEAR__（比值放大，谨慎解读）；ProgramBench 不在来源表中（分数区间 0–18.5 过窄）。悬停看各源比值。
+若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。两轴覆盖度都低于 35% 的点画成虚线环并淡显标签（本轮 19 个），数值靠先验撑住、只作参考；不剔除，因为单一来源本身也是证据。本轮守卫剔除：__DROPPED__（等效基准超过该榜满分、或不足满分 5%，比值失真）；接近满分的榜：__NEAR__（比值放大，谨慎解读）；ProgramBench 不在来源表中（分数区间 0–18.5 过窄）。悬停看各源比值。
 </div>
 </div>
 <script>
@@ -203,7 +209,8 @@ function draw(){
   const placed=[];
   const sorted=DATA.slice().sort((a,b)=>Math.max(b.P,b.X)-Math.max(a.P,a.X)||b.P-a.P);
   sorted.forEach(d=>{
-    const g=el("g",{class:"pt","data-name":d.name},svg);
+    const thin=(d.pcov<0.35&&d.cov<0.35);      // 两轴证据都薄：标记但不剔除
+    const g=el("g",{class:thin?"pt thin":"pt","data-name":d.name},svg);
     const cx=px(d.X), cy=py(d.P);
     let mk;
     if(d.only==="P"){
@@ -211,6 +218,9 @@ function draw(){
     }else if(d.only==="X"){
       mk=el("polygon",{points:`${cx},${cy-6.6} ${cx+6.6},${cy} ${cx},${cy+6.6} ${cx-6.6},${cy}`,
         fill:"none",stroke:COLOR[d.tier],"stroke-width":1.8,class:"mk"},g);
+    }else if(thin){
+      mk=el("circle",{cx,cy,r:5.6,fill:"#fff",stroke:COLOR[d.tier],"stroke-width":1.6,
+        "stroke-dasharray":"2.6 2.2",class:"mk"},g);
     }else{
       mk=el("circle",{cx,cy,r:5.6,fill:COLOR[d.tier],stroke:COLOR[d.tier],"stroke-width":1,class:"mk"},g);
     }
@@ -226,17 +236,21 @@ function draw(){
     g.insertBefore(ln,mk);
     t.setAttribute("x",box.x+2); t.setAttribute("y",box.y+hgt-3.5);
     boxes.push(box);
-    placed.push({cx,cy,w,hgt,t,ln,box});
+    placed.push({cx,cy,w,hgt,t,ln,box,d,g});
     g.addEventListener("mouseenter",e=>{g.classList.add("hl");showTip(d,e);});
     g.addEventListener("mousemove",e=>moveTip(e));
     g.addEventListener("mouseleave",()=>{g.classList.remove("hl");if(pinned!==d)tip.style.opacity=0;});
     g.addEventListener("click",()=>{pinned=pinned===d?null:d;if(pinned)showTip(d);});
   });
 
-  // 第二轮：把仍有重叠的标签往外挪，直到清空；挪不动就退到重叠最小的位置
-  const ovOf=box=>{const pad={x:box.x-GAP,y:box.y-GAP,w:box.w+2*GAP,h:box.h+2*GAP};
-    let s=0; for(const o of boxes) if(o!==box) s+=inter(pad,o); return s;};
-  for(let pass=0;pass<60;pass++){
+  // 第二轮：局部外扩。先求零重叠，求不到就退到重叠最小的位置
+  const padOf=b=>({x:b.x-GAP,y:b.y-GAP,w:b.w+2*GAP,h:b.h+2*GAP});
+  const ovOf=b=>{const q=padOf(b);let t=0;for(const o of boxes) if(o!==b) t+=inter(q,o);return t;};
+  const apply=p=>{const [lx,ly]=anchor(p.cx,p.cy,p.box);
+    p.ln.setAttribute("x2",lx); p.ln.setAttribute("y2",ly);
+    p.t.setAttribute("x",p.box.x+2); p.t.setAttribute("y",p.box.y+p.hgt-3.5);};
+
+  for(let pass=0;pass<80;pass++){
     let moved=false;
     for(let i=0;i<placed.length;i++)for(let j=i+1;j<placed.length;j++){
       const A=placed[i].box, Bx=placed[j].box;
@@ -244,20 +258,61 @@ function draw(){
       const p=placed[j];
       boxes.splice(boxes.indexOf(p.box),1);
       const before=ovOf(p.box);
-      const sp2=spot(p.cx,p.cy,p.w,p.hgt,430,true);
+      const sp2=spot(p.cx,p.cy,p.w,p.hgt,600,true);
       let nb=sp2&&sp2.ov===0?sp2.box:null;
-      if(!nb){const alt=spot(p.cx,p.cy,p.w,p.hgt,430,false);
+      if(!nb){const alt=spot(p.cx,p.cy,p.w,p.hgt,600,false);
         if(alt&&alt.ov<before-1) nb=alt.box;}
       if(!nb){ boxes.push(p.box); continue; }
-      p.box=nb;
-      const [nx2,ny2]=anchor(p.cx,p.cy,nb);
-      p.ln.setAttribute("x2",nx2); p.ln.setAttribute("y2",ny2);
-      p.t.setAttribute("x",nb.x+2); p.t.setAttribute("y",nb.y+p.hgt-3.5);
-      boxes.push(nb);
-      moved=true;
+      p.box=nb; apply(p); boxes.push(nb); moved=true;
     }
     if(!moved) break;
   }
+
+  // 第三轮：还在重叠的标签做全域网格搜索，代价取“离自己最近”
+  function gridBest(p){
+    let best=null,bestCost=Infinity;
+    for(let y=T+PADR;y+p.hgt<=B-PADR;y+=8){
+      for(let x=L+PADR;x+p.w<=R-PADR;x+=8){
+        const box={x,y,w:p.w,h:p.hgt};
+        const q=padOf(box);
+        let ov=0; for(const o of boxes) ov+=inter(q,o);
+        if(ov>0) continue;
+        const cost=Math.hypot(x+p.w/2-p.cx,y+p.hgt/2-p.cy);
+        if(cost<bestCost){best=box;bestCost=cost;}
+      }
+    }
+    return best;
+  }
+  for(let pass=0;pass<4;pass++){
+    let moved=false;
+    for(const p of placed){
+      if(ovOf(p.box)<=0) continue;
+      boxes.splice(boxes.indexOf(p.box),1);
+      const nb=gridBest(p);
+      if(nb){p.box=nb; apply(p); boxes.push(nb); moved=true;}
+      else boxes.push(p.box);
+    }
+    if(!moved) break;
+  }
+
+  // 第四轮：实在放不下就按档位+覆盖度隐藏标签（点保留，悬停时名字照样出现）
+  const RK={M0:4,M1:3,M2:2,M3:1};
+  const prio=p=>(RK[p.d.tier]||0)*1000+Math.max(p.d.P,p.d.X)*10+(p.d.pcov+p.d.cov);
+  let hidden=0;
+  for(let pass=0;pass<12;pass++){
+    let changed=false;
+    for(let i=0;i<placed.length;i++)for(let j=i+1;j<placed.length;j++){
+      const A=placed[i], Bc=placed[j];
+      if(A.hidden||Bc.hidden) continue;
+      const a=A.box, b=Bc.box;
+      if(a.x+a.w<=b.x||b.x+b.w<=a.x||a.y+a.h<=b.y||b.y+b.h<=a.y) continue;
+      const v=prio(A)<prio(Bc)?A:Bc;
+      v.hidden=true; v.g.classList.add("hid"); hidden++; changed=true;
+    }
+    if(!changed) break;
+  }
+  const hn=document.getElementById("hidn");
+  if(hn) hn.textContent=hidden;
 }
 
 function showTip(d,e){
@@ -270,6 +325,7 @@ function showTip(d,e){
     <span class="k">P 规划</span> ${f(d.P)}×　<span class="k">X 执行</span> ${f(d.X)}×<br>
     <span class="k">档位</span> ${d.tier}　<span class="k">覆盖</span> P ${(d.pcov*100).toFixed(0)}% · X ${(d.cov*100).toFixed(0)}%<br>
     ${d.only?`<span class="k">注意</span> 仅 ${d.only} 轴已测，位置按 P=X 假设放置<br>`:""}
+    ${(d.pcov<0.35&&d.cov<0.35)?`<span class="k">证据薄</span> 两轴覆盖度都低于 35%，数值靠先验撑住，只作参考<br>`:""}
     ${d.x2!=null?`<span class="k">X2 可恢复</span> ${d.x2.toFixed(1)}%<br>`:""}
     ${raw?`<span class="k">各源比值</span> ${raw}<br>`:""}
     <span class="k">来源</span> ${d.src}<br>
@@ -292,10 +348,10 @@ q.addEventListener("input",()=>{
 });
 
 const tbl=document.getElementById("tbl");
-tbl.innerHTML="<table><thead><tr><th>模型</th><th>P</th><th>X</th><th>档位</th><th>轴</th><th>X 覆盖</th><th>来源</th></tr></thead><tbody>"+
+tbl.innerHTML="<table><thead><tr><th>模型</th><th>P</th><th>X</th><th>档位</th><th>轴</th><th>P 覆盖</th><th>X 覆盖</th><th>来源</th></tr></thead><tbody>"+
  DATA.slice().sort((a,b)=>b.P-a.P).map(d=>`<tr><td>${d.name}</td>
  <td>${f(d.P)}</td><td>${f(d.X)}</td><td>${d.tier}</td><td>${d.only||"双轴"}</td>
- <td>${(d.cov*100).toFixed(0)}%</td><td style="text-align:left;color:#6b7280">${d.src}</td></tr>`).join("")+
+ <td>${(d.pcov*100).toFixed(0)}%</td><td>${(d.cov*100).toFixed(0)}%</td><td style="text-align:left;color:#6b7280">${d.src}</td></tr>`).join("")+
  "</tbody></table>";
 
 if(document.fonts&&document.fonts.ready){document.fonts.ready.then(draw);}else{draw();}
