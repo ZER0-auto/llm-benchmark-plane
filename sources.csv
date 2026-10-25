@@ -1,0 +1,40 @@
+﻿id,name,axis,status,public,mode,industry,anchor,weight_prior,alpha_p,grade,models,updated,url,note
+logic,致知 logic,P,active,private,one-shot,general,1017,0.5,0.95,A,42,2026-10,https://llm2014.github.io/llm_benchmark/,滚动题库月榜，多次运行取中位
+proof_bench,Vals ProofBench,P,active,private,agentic,math,v41,0.3,0.9,A,53,2026-10-20,https://www.vals.ai/benchmarks/proof_bench,形式化证明；链式 57.11
+mysterymechanism,Vals MysteryMechanism,P,active,private,agentic,science,v41,0.2,0.85,A,28,2026-10-20,https://www.vals.ai/benchmarks/mysterymechanism,封闭机制反推；链式 22.39
+shishan,屎山挑战赛,X,active,private,agentic,coding,v41,0.32,0.5,A,10,2026-10-19,https://shishan.hellomeng.com/,阶梯赛制 + Rasch；链式 115.84
+code_v3,致知 code_v3,X,active,private,agentic,coding,1017,0.28,0.45,A-,10,2026-10,https://llm2014.github.io/llm_benchmark/,7 个工程任务
+vibe-code,Vals Vibe Code,X,active,private,agentic,coding,1017,0.14,0.4,A,119,2026-10-24,https://www.vals.ai/benchmarks/vibe-code,私有测试集
+code-migration-v1-1,Vals Code Migration,X,active,private,agentic,coding,1017,0.09,0.35,A,28,2026-10-20,https://www.vals.ai/benchmarks/code-migration-v1-1,私有测试集
+terminal-bench-4,Terminal-Bench 4,X,active,public,agentic,coding,1017,0.04,0.45,B,55,2026-10-24,https://www.vals.ai/benchmarks/terminal-bench-4,公开题，第三方跑
+skillsbench,SkillsBench,X,guarded,public,agentic,coding,v41,0.04,0.4,B,35,2026-09-27,https://www.vals.ai/benchmarks/skillsbench,守卫剔除，等效基准 102.44
+ioi,IOI,X,active,public,agentic,coding,v41,0.01,0.6,B,45,2026-10-20,https://www.vals.ai/benchmarks/ioi,公开题，第三方跑
+sage,SAGE,P,candidate,private,one-shot,education,v41,0.1,0.9,A-,91,2026-10-08,https://www.vals.ai/benchmarks/sage,一次性学科测评，覆盖 PDE/线代/自动机/微积分
+legal_bench,LegalBench,P,candidate,public,one-shot,legal,v41,0.06,0.85,B,151,2026-10-20,https://www.vals.ai/benchmarks/legal_bench,公开法律知识题，题量大
+medcode,MedCode,P,candidate,private,one-shot,healthcare,v41,0.04,0.8,B,107,2026-10-20,https://www.vals.ai/benchmarks/medcode,医疗账单编码，领域知识
+medscribe,MedScribe,P,candidate,private,one-shot,healthcare,v41,0.04,0.8,B,109,2026-10-20,https://www.vals.ai/benchmarks/medscribe,病历文书，领域知识
+emb,EMB,X,candidate,private,agentic,finance,1017,0.1,0.45,A-,77,2026-10-20,https://www.vals.ai/benchmarks/emb,Excel 财务建模，私有任务
+fabv2,Finance Agent v2,X,candidate,private,agentic,finance,1017,0.06,0.5,B+,81,2026-10-20,https://www.vals.ai/benchmarks/fabv2,金融分析师任务
+legal_research,Legal Research Bench,X,candidate,private,agentic,legal,1017,0.05,0.55,B+,85,2026-10-20,https://www.vals.ai/benchmarks/legal_research,法律检索与起草
+tax_agent_bench,Tax Agent Bench,X,candidate,private,agentic,finance,1017,0.04,0.55,B,76,2026-10-20,https://www.vals.ai/benchmarks/tax_agent_bench,美国税务问答
+cyber,CyberBench v1.1,X,candidate,private,agentic,cyber,v41,0.06,0.5,A-,47,2026-10-12,https://www.vals.ai/benchmarks/cyber,漏洞 PoC + 补丁
+srebench,SRE Bench,X,candidate,private,agentic,cyber,v41,0.05,0.45,A-,35,2026-10-14,https://www.vals.ai/benchmarks/srebench,逆向真实二进制
+public-benefits-bench,Public Benefits Bench,X,candidate,private,agentic,social mobility,v41,0.03,0.55,B,50,2026-10-20,https://www.vals.ai/benchmarks/public-benefits-bench,SNAP 福利流程
+hlab-v1,Harvey Legal Agent Bench,X,candidate,public,agentic,legal,1017,0.05,0.55,B,81,2026-10-20,https://www.vals.ai/benchmarks/hlab-v1,公开法律 agent 任务
+terminal-bench-science,Terminal-Bench-Science,X,candidate,public,agentic,science,v41,0.04,0.5,B,42,2026-10-20,https://www.vals.ai/benchmarks/terminal-bench-science,科研终端任务
+swebench-multimodal,SWE-bench Multimodal,X,candidate,public,agentic,coding,v41,0.03,0.4,B,20,2026-10-20,https://www.vals.ai/benchmarks/swebench-multimodal,前端 GitHub issue
+biomysterybench,BioMysteryBench,X,candidate,public,agentic,science,v41,0.03,0.6,B,28,2026-10-20,https://www.vals.ai/benchmarks/biomysterybench,生物信息谜题
+programbench,ProgramBench,X,excluded,public,agentic,coding,v41,0,,B,64,2026-10-12,https://www.vals.ai/benchmarks/programbench,分数 0–18.5 过窄
+swebench,SWE-bench,X,excluded,public,agentic,coding,v4f,0,,B,88,2026-09-01,https://www.vals.ai/benchmarks/swebench,只有 V4 Flash 0731，无 1017/次新
+finance_index,Vals Finance Index,-,excluded,private,agentic,index,1017,0,,-,31,2026-10-20,https://www.vals.ai/benchmarks/finance_index,聚合指数，避免重复计分
+legal_index,Vals Legal Index,-,excluded,private,agentic,index,1017,0,,-,28,2026-10-20,https://www.vals.ai/benchmarks/legal_index,聚合指数
+science_index,Vals Science Index,-,excluded,private,agentic,index,v41,0,,-,22,2026-10-20,https://www.vals.ai/benchmarks/science_index,聚合指数
+vals_index,Vals Index,-,excluded,private,agentic,index,1017,0,,-,27,2026-10-20,https://www.vals.ai/benchmarks/vals_index,综合指数
+terminal-bench-2-1,Terminal-Bench 2.1,X,excluded,public,agentic,coding,v41,0,,B,76,2026-10-14,https://www.vals.ai/benchmarks/terminal-bench-2-1,被 TB4 取代，避免重复
+vcb-1-100,Vibe Code Bench 1-100,X,excluded,private,agentic,coding,v41,0,,B,26,2026-10-20,https://www.vals.ai/benchmarks/vcb-1-100,Vibe Code 子集，重复计分
+aa_hle,AA HLE,P,active,public,one-shot,science,1017,0.03,0.95,A-,27,2026-10-25,https://artificialanalysis.ai/evaluations/humanitys-last-exam,只用分项，不用综合指数
+aa_lcr,AA Long Context Reasoning,P,active,public,one-shot,general,1017,0.02,0.85,A-,27,2026-10-25,https://artificialanalysis.ai/evaluations/artificial-analysis-long-context-reasoning,长上下文推理
+aa_critpt,AA CritPT,P,active,public,one-shot,physics,1017,0.02,0.90,B,27,2026-10-25,https://artificialanalysis.ai/evaluations/critpt,科研推理
+aa_omniscience,AA Omniscience,P,candidate,public,one-shot,knowledge,1017,0.01,0.75,C+,23,2026-10-25,https://artificialanalysis.ai/evaluations/omniscience,分数 0–100 跨度极大（1017 只有 4.7），比值不稳，暂不计分
+aa_scicode,AA SciCode,X,active,public,agentic,coding,1017,0.02,0.55,B,27,2026-10-25,https://artificialanalysis.ai/evaluations/scicode,科学计算编程
+aa_automation,AA AutomationBench,X,active,public,agentic,office,1017,0.03,0.50,B,27,2026-10-25,https://artificialanalysis.ai/evaluations/automationbench-aa,办公自动化 agent

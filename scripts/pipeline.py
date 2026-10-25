@@ -11,6 +11,7 @@
 import csv, json, re, math, os
 from collections import Counter
 from vals_map import VALS_MAP
+from aa_map import AA_MAP
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(BASE, "data")
@@ -32,18 +33,17 @@ ALIAS = {"混元3.0": "hy3", "deepseekflash": "deepseekv4.1flash"}
 ANCHOR_KEY = "deepseekv4.1flash1017"
 MIN_MODELS_PER_VERSION = 5      # 版本内至少这么多个模型才可用
 
-SOURCES = {
-    "logic":               ("致知 logic", "P", 0.50, "A"),
-    "proof_bench":         ("Vals ProofBench", "P", 0.30, "A"),
-    "mysterymechanism":    ("Vals MysteryMechanism", "P", 0.20, "A"),
-    "shishan":             ("屎山挑战赛", "X", 0.32, "A"),
-    "code_v3":             ("致知 code_v3", "X", 0.28, "A-"),
-    "vibe-code":           ("Vals Vibe Code", "X", 0.14, "A"),
-    "code-migration-v1-1": ("Vals Code Migration", "X", 0.09, "A"),
-    "terminal-bench-4":    ("Terminal-Bench 4", "X", 0.04, "B"),
-    "skillsbench":         ("SkillsBench", "X", 0.04, "B"),
-    "ioi":                 ("IOI", "X", 0.01, "B"),
-}
+def load_registry():
+    reg = {}
+    p = os.path.join(BASE, "sources.csv")
+    for r in csv.DictReader(open(p, encoding="utf-8-sig")):
+        if r["status"] not in ("active", "guarded"): continue
+        if not r["alpha_p"].strip(): continue
+        reg[r["id"]] = {"name": r["name"], "w": float(r["weight_prior"]),
+                        "grade": r["grade"], "alpha": float(r["alpha_p"])}
+    return reg
+
+SOURCES = load_registry()
 SECONDARY_KEY = "deepseekv4.1flash"   # 与基准不同的模型，但可作链式锚点
 
 def norm(name):
@@ -139,6 +139,18 @@ def load_vals():
                              "version": r.get("updated", ""), "date": (r.get("updated") or "")[:10], "value": acc}
     return {s: list(v.values()) for s, v in agg.items()}
 
+def load_aa():
+    p = os.path.join(DATA, "aa", "aa_rows.csv")
+    if not os.path.exists(p): return {}
+    agg = {}
+    for r in csv.DictReader(open(p, encoding="utf-8-sig")):
+        key = AA_MAP.get(r["model_slug"])
+        if not key: continue
+        agg.setdefault(r["source_id"], []).append(
+            {"key": key, "name": r["model_name"], "version": "aa-2026-10",
+             "date": "2026-10-25", "value": float(r["score"])})
+    return agg
+
 # ---------- 版本筛选 ----------
 def usable_versions(rows, label):
     by_ver = {}
@@ -155,14 +167,34 @@ def usable_versions(rows, label):
             print(f"  {label} {ver}: {n} 个模型，{why}，丢弃")
     return keep
 
-ORDER = ["logic", "proof_bench", "mysterymechanism", "shishan", "code_v3",
-         "vibe-code", "code-migration-v1-1", "terminal-bench-4", "skillsbench", "ioi"]
+ORDER = list(SOURCES)
+
+def fit_px(items, lam=0.03):
+    """items: [(w, alpha, ratio)]；解 r ≈ α·P + (1-α)·X，岭回归稳定。"""
+    A = B = C = D = E = 0.0
+    r0n = r0d = 0.0
+    for w, a, r in items:
+        A += w * a * a
+        B += w * a * (1 - a)
+        C += w * (1 - a) * (1 - a)
+        D += w * a * r
+        E += w * (1 - a) * r
+        r0n += w * r
+        r0d += w
+    if r0d == 0:
+        return None, None
+    r0 = r0n / r0d
+    A += lam; C += lam; D += lam * r0; E += lam * r0
+    det = A * C - B * B
+    return (D * C - E * B) / det, (E * A - D * B) / det
+
 
 def main():
     logic_rows = load_logic()
     code_rows = load_code_v3()
     shi_rows, x2map = load_shishan()
     vals = load_vals()
+    vals.update(load_aa())
 
     print("版本检查：")
     logic_ok = usable_versions(logic_rows, "logic")
@@ -218,18 +250,17 @@ def main():
             a = [r["value"] for r in rows.values() if r["version"] == ver and r["key"] == ANCHOR_KEY]
             if a: anchor_of[(s, ver)] = a[0]
 
-    # 副锚点自身在各轴上的相对能力（来自含主锚点的源）
+    # 副锚点自身在各轴上的相对能力：按 P/X 成分加权
     sec = {}
-    for ax in ("P", "X"):
-        vals_ax = []
-        for s, rows in per_source.items():
-            if SOURCES[s][1] != ax: continue
-            if SECONDARY_KEY not in rows: continue
-            r = rows[SECONDARY_KEY]
-            a = anchor_of.get((s, r["version"]))
-            if a: vals_ax.append((SOURCES[s][2], r["value"] / a))
-        if vals_ax:
-            sec[ax] = sum(w * v for w, v in vals_ax) / sum(w for w, _ in vals_ax)
+    items = []
+    for s, rows in per_source.items():
+        if SECONDARY_KEY not in rows: continue
+        r = rows[SECONDARY_KEY]
+        a = anchor_of.get((s, r["version"]))
+        if a: items.append((SOURCES[s]["w"], SOURCES[s]["alpha"], r["value"] / a))
+    if items:
+        sp, sx = fit_px(items)
+        sec = {"P": sp, "X": sx}
     print("副锚点 DeepSeek V4.1 Flash 相对能力：P=%.4f X=%.4f" % (sec.get("P", 0), sec.get("X", 0)))
 
     # 链式：用副锚点把缺主锚点的榜单接进来（含屎山）
@@ -238,19 +269,19 @@ def main():
         chained["shishan"] = [r for rs in shi_chained.values() for r in rs]
     dropped = {}
     for slug, rows in chained.items():
-        ax = SOURCES[slug][1]
-        if ax not in sec: 
-            print(f"  {slug}: 副锚点无 {ax} 轴比值，跳过"); continue
+        if "P" not in sec or "X" not in sec: continue
+        a = SOURCES[slug]["alpha"]
+        r_anchor = a * sec["P"] + (1 - a) * sec["X"]
         ref = next((r for r in rows if r["key"] == SECONDARY_KEY), None)
         if not ref: continue
-        scale = ref["value"] / sec[ax]
+        scale = ref["value"] / r_anchor
         if scale > 100 and slug != "shishan":
             print(f"  {slug}: 等效基准 {scale:.2f} > 100%，比值法失效，丢弃")
             dropped[slug] = scale
             continue
         if scale > 100:
             print(f"  {slug}: 等效基准 {scale:.2f}（Rasch 分不是百分制，跳过 >100 守卫）")
-        print(f"  {slug}: 副锚点原始 {ref['value']:.2f} / 相对 {sec[ax]:.4f} -> 等效基准 {scale:.2f}")
+        print(f"  {slug}: 副锚点原始 {ref['value']:.2f} / 混合相对 {r_anchor:.4f} -> 等效基准 {scale:.2f}")
         for r in rows:
             if r["key"] == SECONDARY_KEY: continue
             per_source.setdefault(slug, {})[r["key"]] = r
@@ -266,43 +297,50 @@ def main():
 
     ev = open(os.path.join(OUT, "model_evidence.csv"), "w", newline="", encoding="utf-8-sig")
     w = csv.writer(ev, lineterminator="\n")
-    w.writerow(["model_key", "model_id", "source", "axis", "grade", "weight", "version", "date", "raw", "anchor_raw", "ratio"])
+    w.writerow(["model_key", "model_id", "source", "axis", "alpha_p", "grade", "weight", "version", "date", "raw", "anchor_raw", "ratio"])
 
     names, parts = {}, {}
     for s, rows in per_source.items():
-        ax = SOURCES[s][1]
+        alpha = SOURCES[s]["alpha"]
+        ax = "P" if alpha >= 0.5 else "X"
         for k, r in rows.items():
             a = anchor_of.get((s, r["version"]))
             if not a: continue
             ratio = r["value"] / a
             names.setdefault(k, r["name"])
-            parts.setdefault(k, []).append((SOURCES[s][2], ratio, s, ax))
-            w.writerow([k, r["name"], SOURCES[s][0], ax, SOURCES[s][3], SOURCES[s][2],
-                        r["version"], r.get("date", r["version"]), round(r["value"], 2), round(a, 2), round(ratio, 4)])
+            parts.setdefault(k, []).append((SOURCES[s]["w"], ratio, s))
+            w.writerow([k, r["name"], SOURCES[s]["name"], ax, alpha, SOURCES[s]["grade"],
+                        SOURCES[s]["w"], r["version"], r.get("date", r["version"]),
+                        round(r["value"], 2), round(a, 2), round(ratio, 4)])
     ev.close()
 
+    used = set(per_source)
+    max_p = sum(SOURCES[s]["w"] * SOURCES[s]["alpha"] for s in used)
+    max_x = sum(SOURCES[s]["w"] * (1 - SOURCES[s]["alpha"]) for s in used)
     plane = []
     for k, ps in parts.items():
-        p_parts = [(wt, r) for wt, r, s, ax in ps if ax == "P"]
-        x_parts = [(wt, r) for wt, r, s, ax in ps if ax == "X"]
-        if not p_parts and not x_parts: continue
-        p = sum(wt * r for wt, r in p_parts) / sum(wt for wt, _ in p_parts) if p_parts else None
-        x = sum(wt * r for wt, r in x_parts) / sum(wt for wt, _ in x_parts) if x_parts else None
+        p_parts = [(SOURCES[s]["w"] * SOURCES[s]["alpha"], r) for w, r, s in ps]
+        x_parts = [(SOURCES[s]["w"] * (1 - SOURCES[s]["alpha"]), r) for w, r, s in ps]
+        pw = sum(w for w, _ in p_parts); xw = sum(w for w, _ in x_parts)
+        if pw <= 0 and xw <= 0: continue
+        p, x = fit_px([(SOURCES[s]["w"], SOURCES[s]["alpha"], r) for w, r, s in ps])
+        if p is None: continue
         axis_only = ""
-        if p is None: p, axis_only = x, "X"
-        elif x is None: x, axis_only = p, "P"
         top = max(p, x)
         tier = "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
-        tag = ("P+" if (p_parts and p >= 1.25) else "") + ("X+" if (x_parts and x >= 1.25) else "")
-        rmap = {s: r for wt, r, s, ax in ps}
+        tag = ("P+" if (p is not None and p >= 1.25) else "") + ("X+" if (x is not None and x >= 1.25) else "")
+        rmap = {s: r for w, r, s in ps}
+        pcov = pw / max_p if max_p else 0
+        xcov = xw / max_x if max_x else 0
         row = [names[k], k, round(p, 3), round(x, 3), tier, tag, axis_only,
-               round(sum(wt for wt, _ in x_parts), 2),
-               "+".join(s for _, _, s, _ in ps),
+               round(pcov, 3), round(xcov, 3),
+               "+".join(s for _, _, s in ps),
                round(x2map.get(k, -1), 1) if k in x2map else ""]
         row += [round(rmap[s], 3) if s in rmap else "" for s in ORDER]
         plane.append(row)
 
-    cols = ["model_id", "model_key", "P", "X", "tier", "tags", "axis_only", "X_coverage", "sources", "X2"] + \
+    cols = ["model_id", "model_key", "P", "X", "tier", "tags", "axis_only",
+            "P_coverage", "X_coverage", "sources", "X2"] + \
            ["r_" + s.replace("-", "_") for s in ORDER]
     pl = open(os.path.join(OUT, "model_plane.csv"), "w", newline="", encoding="utf-8-sig")
     w = csv.writer(pl, lineterminator="\n"); w.writerow(cols)

@@ -1,61 +1,61 @@
-﻿model_id,model_key,P,X,tier,tags,axis_only,X_coverage,sources,X2,r_logic,r_proof_bench,r_mysterymechanism,r_shishan,r_code_v3,r_vibe_code,r_code_migration_v1_1,r_terminal_bench_4,r_skillsbench,r_ioi
-GPT-6 Astra,gpt6astra,1.767,1.341,M0,P+X+,,0.56,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,1.544,1.734,2.374,,1.459,1.021,1.193,1.873,,1.692
-Opus 5,opus5,1.708,1.172,M0,P+,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,,,1.734,1.67,,,1.008,,1.683,,1.427
-Opus 5.5,opus5.5,1.563,1.416,M0,P+X+,,0.56,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,1.189,1.751,2.213,,1.581,1.029,1.2,2.048,,1.608
-Gemini 4 Argon,gemini4argon,1.543,1.052,M0,P+,,0.56,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,1.234,1.734,2.032,,0.924,1.048,1.048,1.81,,1.692
-GPT-6.1 Sol,gpt6.1sol,1.539,1.28,M0,P+X+,,0.56,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,1.21,1.734,2.072,,1.378,1.014,1.145,1.73,,1.639
-Sonnet 5.5,sonnet5.5,1.476,1.278,M0,P+X+,,0.28,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,1.025,1.751,2.193,,,1.053,1.287,2.016,,1.405
-Fable 5.1,fable5.1,1.476,1.223,M0,P+,,0.19,logic+vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,,1.047,1.751,2.133,,,1.029,,1.825,,1.536
-GPT-5.6 Sol,gpt5.6sol,1.468,1.008,M0,P+,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,,,1.453,1.489,,,0.918,,1.19,,1.542
-GPT-6 Sol,gpt6sol,1.411,1.105,M0,P+,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,,,1.453,1.348,,,1.001,,1.397,,1.398
-Sonnet 5,sonnet5,1.348,0.793,M0,P+,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench,,,1.348,,,,0.927,,0.333,,0.761
-Muse Wonder 1.0,musewonder1.0,1.219,1.081,M1,,,0.28,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,1.064,1.471,1.227,,,0.947,1.072,1.556,,1.132
-Kimi-K3,kimik3,1.164,0.676,M1,,,0.56,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench,,0.949,1.523,,,0.625,0.969,0.423,0.54,,0.828
-Kimi-K3.1-Pro,kimik3.1pro,1.1,1.1,M1,,P,0,logic,,1.1,,,,,,,,,
-Grok 4.6,grok4.6,1.083,0.796,M1,,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,,,0.893,1.368,,,0.869,,0.54,,0.805
-Haiku 5.5,haiku5.5,1.07,0.957,M1,,,0.28,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,0.577,1.558,1.569,,,1.031,0.775,1.143,,0.8
-Gemini 3.8 Flash,gemini3.8flash,1.035,0.755,M1,,,0.28,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,0.915,0.841,1.63,,,0.897,0.572,0.619,,0.963
-Gemini 3.7 Flash,gemini3.7flash,1.016,0.732,M1,,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench,,,1.016,,,,0.802,,0.381,,1.148
-DeepSeek V4.1 Flash 1017,deepseekv4.1flash1017,1.0,1.0,M1,,,0.55,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4,,1.0,,,,1.0,1.0,1.0,1.0,,
-DeepSeek V4 Flash 0731,deepseekv4flash0731,0.981,0.78,M2,,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench,,,0.981,,,,0.852,,0.587,,0.554
-Muse Spark 1.3,musespark1.3,0.963,0.805,M2,,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench,,,0.963,,,,0.944,,0.333,,0.743
-DeepSeek V4.1 Flash,deepseekv4.1flash,0.946,0.681,M2,,,0.55,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4,90.9,0.946,,,,0.486,0.966,0.873,0.619,,
-MiniMax-M3.1-Flash,minimaxm3.1flash,0.924,0.832,M2,,,0.18,logic+vibe-code+terminal-bench-4,,0.924,,,,,0.843,,0.794,,
-Qwen3.8-Max,qwen3.8max,0.922,0.686,M2,,,0.51,logic+shishan+vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,77.8,0.808,1.016,1.066,0.6,,0.737,,1.079,,1.165
-GPT-5.6 Luna,gpt5.6luna,0.888,0.779,M2,,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,,,1.051,0.644,,,0.878,,0.365,,1.045
-GLM-5.3,glm5.3,0.888,0.674,M2,,,0.88,logic+code_v3+shishan+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,90.9,0.852,0.858,1.026,0.619,0.486,0.891,0.816,1.222,,1.158
-Seed-2.1-pro 0915,seed2.1pro0915,0.887,0.887,M2,,P,0,logic,,0.887,,,,,,,,,
-DeepSeek V4 Pro 0813,deepseekv4pro0813,0.857,0.811,M2,,,0.28,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench,,0.847,0.876,,,,0.938,0.77,0.444,,0.873
-Grok 4.7,grok4.7,0.831,0.909,M2,,,0.28,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,0.938,0.455,1.127,,,0.982,0.788,0.905,,0.976
-GPT-5.5,gpt5.5,0.796,0.796,M2,,X,0.14,vibe-code,,,,,,,0.796,,,,
-Step 5 Preview,step5preview,0.754,0.705,M2,,,0.6,logic+shishan+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,80.0,0.737,0.735,0.825,0.63,,0.802,0.696,1.0,,0.644
-Muse Spark 1.2,musespark1.2,0.753,0.724,M2,,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench,,,0.753,,,,0.902,,0.19,,0.368
-GLM-5.2,glm5.2,0.729,0.729,M2,,X,0.14,vibe-code,,,,,,,0.729,,,,
-GPT-6 Luna,gpt6luna,0.723,0.782,M2,,,0.28,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,0.427,1.121,0.865,,,0.931,0.691,0.429,,0.94
-Qwen3.8-Flash,qwen3.8flash,0.671,0.671,M3,,P,0,logic,,0.671,,,,,,,,,
-Gemini 3.1 Pro,gemini3.1pro,0.643,0.332,M3,,,0.19,vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,,,0.455,0.925,,,0.365,,0.079,,0.877
-GLM-5.3-Flash,glm5.3flash,0.635,0.621,M3,,,0.28,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench,,0.796,0.368,,,,0.351,0.765,1.175,,0.888
-Spark X2.6,sparkx2.6,0.574,0.574,M3,,P,0,logic,,0.574,,,,,,,,,
-Qwen3.7-Plus,qwen3.7plus,0.529,0.529,M3,,X,0.14,vibe-code,,,,,,,0.529,,,,
-Qwen3.8-Max-0902,qwen3.8max0902,0.519,0.519,M3,,X,0.28,code_v3,,,,,,0.519,,,,,
-DeepSeek V4 Flash,deepseekv4flash,0.51,0.51,M3,,X,0.32,shishan,88.9,,,,0.51,,,,,,
-Hy3,hy3,0.502,0.332,M3,,,0.32,logic+shishan,66.7,0.502,,,0.332,,,,,,
-MiMo-V2.6-Pro,mimov2.6pro,0.47,0.47,M3,,X,0.28,code_v3,,,,,,0.47,,,,,
-Qwen3.8-27B,qwen3.827b,0.453,0.468,M3,,,0.47,logic+shishan+vibe-code+ioi+proof_bench,66.7,0.557,0.28,,0.344,,0.739,,,,0.661
-Ling-3.1-flash,ling3.1flash,0.448,0.448,M3,,P,0,logic,,0.448,,,,,,,,,
-MiMo-V2.5-Pro,mimov2.5pro,0.385,0.306,M3,,,0.18,vibe-code+terminal-bench-4+proof_bench,,,0.385,,,,0.389,,0.016,,
-MiniMax-M3,minimaxm3,0.384,0.389,M3,,,0.27,logic+vibe-code+code-migration-v1-1+terminal-bench-4+proof_bench,,0.426,0.315,,,,0.542,0.309,0.032,,
-Claude Opus 4.6,claudeopus4.6,0.344,0.344,M3,,X,0.32,shishan,66.7,,,,0.344,,,,,,
-Seed-2.0-lite 0428,seed2.0lite0428,0.299,0.299,M3,,P,0,logic,,0.299,,,,,,,,,
-Spark X2.5,sparkx2.5,0.227,0.227,M3,,P,0,logic,,0.227,,,,,,,,,
-Mistral Large 4,mistrallarge4,0.218,0.649,M3,,,0.51,logic+shishan+vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,77.8,0.114,0.175,0.543,0.51,,0.894,,0.873,,0.766
-Gemini 3.5 Flash Lite,gemini3.5flashlite,0.213,0.424,M3,,,0.14,logic+vibe-code,,0.213,,,,,0.424,,,,
-GPT-5.5 Instant,gpt5.5instant,0.168,0.168,M3,,P,0,logic,,0.168,,,,,,,,,
-Mistral Medium 3.5,mistralmedium3.5,0.158,0.033,M3,,,0.14,vibe-code+proof_bench,,,0.158,,,,0.033,,,,
-openPangu-2.0-Pro,openpangu2.0pro,0.107,0.107,M3,,P,0,logic,,0.107,,,,,,,,,
-ERNIE 5.1,ernie5.1,0.098,0.098,M3,,P,0,logic,,0.098,,,,,,,,,
-openPangu-2.0-Flash,openpangu2.0flash,0.094,0.094,M3,,P,0,logic,,0.094,,,,,,,,,
-Dots3-Note Preview,dots3notepreview,0.088,0.088,M3,,P,0,logic,,0.088,,,,,,,,,
-Gemini 3.1 Flash Lite,gemini3.1flashlite,0.072,0.0,M3,,,0.14,logic+vibe-code,,0.072,,,,,0.0,,,,
-LongCat-2.0,longcat2.0,0.036,0.332,M3,,,0.32,logic+shishan,77.8,0.036,,,0.332,,,,,,
-Ling-3.0-flash,ling3.0flash,0.033,0.033,M3,,X,0.14,vibe-code,,,,,,,0.033,,,,
+﻿model_id,model_key,P,X,tier,tags,axis_only,P_coverage,X_coverage,sources,X2,r_logic,r_proof_bench,r_mysterymechanism,r_shishan,r_code_v3,r_vibe_code,r_code_migration_v1_1,r_terminal_bench_4,r_skillsbench,r_ioi,r_aa_hle,r_aa_lcr,r_aa_critpt,r_aa_scicode,r_aa_automation
+GPT-6 Astra,gpt6astra,1.687,1.147,M0,P+,,0.876,0.704,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+aa_hle+aa_lcr+aa_critpt+aa_scicode+aa_automation+ioi+proof_bench+mysterymechanism,,1.544,1.637,2.196,,1.459,1.021,1.193,1.873,,1.947,1.262,0.976,1.321,1.01,1.028
+Opus 5,opus5,1.656,0.886,M0,P+,,0.378,0.312,vibe-code+terminal-bench-4+skillsbench+ioi+proof_bench+mysterymechanism,,,1.637,1.545,,,1.008,,1.683,0.616,1.642,,,,,
+Gemini 4 Argon,gemini4argon,1.479,0.88,M0,P+,,0.876,0.704,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+aa_hle+aa_lcr+aa_critpt+aa_scicode+aa_automation+ioi+proof_bench+mysterymechanism,,1.234,1.637,1.88,,0.924,1.048,1.048,1.81,,1.947,1.318,0.964,1.131,1.106,1.163
+GPT-6.1 Sol,gpt6.1sol,1.478,1.223,M0,P+,,0.813,0.655,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,1.21,1.637,1.917,,1.378,1.014,1.145,1.73,,1.886,,,,,
+Opus 5.5,opus5.5,1.473,1.397,M0,P+X+,,0.876,0.704,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+aa_hle+aa_lcr+aa_critpt+aa_scicode+aa_automation+ioi+proof_bench+mysterymechanism,,1.189,1.653,2.047,,1.581,1.029,1.2,2.048,,1.851,1.416,1.024,1.321,1.197,1.043
+GPT-5.6 Sol,gpt5.6sol,1.42,0.774,M0,P+,,0.378,0.312,vibe-code+terminal-bench-4+skillsbench+ioi+proof_bench+mysterymechanism,,,1.372,1.377,,,0.918,,1.19,0.552,1.775,,,,,
+Fable 5.1,fable5.1,1.393,1.128,M0,P+,,0.776,0.401,logic+vibe-code+terminal-bench-4+aa_hle+aa_lcr+aa_critpt+aa_scicode+aa_automation+skillsbench+ioi+proof_bench+mysterymechanism,,1.047,1.653,1.973,,,1.029,,1.825,0.628,1.767,1.365,1.032,1.238,1.128,0.891
+Sonnet 5.5,sonnet5.5,1.376,1.331,M0,P+X+,,0.787,0.457,logic+vibe-code+code-migration-v1-1+terminal-bench-4+aa_hle+aa_lcr+aa_critpt+aa_scicode+aa_automation+ioi+proof_bench+mysterymechanism,,1.025,1.653,2.029,,,1.053,1.287,2.016,,1.617,1.268,1.0,1.31,1.091,1.077
+GPT-6 Sol,gpt6sol,1.35,1.033,M0,P+,,0.367,0.273,vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,,,1.372,1.247,,,1.001,,1.397,,1.608,,,,,
+Sonnet 5,sonnet5,1.269,0.582,M0,P+,,0.258,0.264,vibe-code+terminal-bench-4+skillsbench+ioi+proof_bench,,,1.273,,,,0.927,,0.333,0.474,0.876,,,,,
+Muse Wonder 1.0,musewonder1.0,1.18,1.067,M1,,,0.724,0.408,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,1.064,1.389,1.135,,,0.947,1.072,1.556,,1.303,,,,,
+Kimi-K3,kimik3,1.144,0.453,M1,,,0.693,0.607,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench,,0.949,1.438,,,0.625,0.969,0.423,0.54,,0.953,,,,,
+Kimi-K3.1-Pro,kimik3.1pro,1.1,1.1,M1,,,0.335,0.04,logic,,1.1,,,,,,,,,,,,,,
+Grok 4.6,grok4.6,1.018,0.721,M1,,,0.378,0.312,vibe-code+terminal-bench-4+skillsbench+ioi+proof_bench+mysterymechanism,,,0.843,1.266,,,0.869,,0.54,0.569,0.927,,,,,
+Gemini 3.8 Flash,gemini3.8flash,1.002,0.698,M1,,,0.735,0.446,logic+vibe-code+code-migration-v1-1+terminal-bench-4+skillsbench+ioi+proof_bench+mysterymechanism,,0.915,0.794,1.508,,,0.897,0.572,0.619,0.591,1.109,,,,,
+DeepSeek V4.1 Flash 1017,deepseekv4.1flash1017,1.0,1.0,M1,,,0.561,0.601,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4+aa_hle+aa_lcr+aa_critpt+aa_scicode+aa_automation,,1.0,,,,1.0,1.0,1.0,1.0,,,1.0,1.0,1.0,1.0,1.0
+Haiku 5.5,haiku5.5,0.985,1.027,M1,,,0.787,0.457,logic+vibe-code+code-migration-v1-1+terminal-bench-4+aa_hle+aa_lcr+aa_critpt+aa_scicode+aa_automation+ioi+proof_bench+mysterymechanism,,0.577,1.472,1.452,,,1.031,0.775,1.143,,0.92,1.025,1.0,0.786,0.983,0.531
+Gemini 3.7 Flash,gemini3.7flash,0.962,0.649,M2,,,0.258,0.264,vibe-code+terminal-bench-4+skillsbench+ioi+proof_bench,,,0.959,,,,0.802,,0.381,0.672,1.321,,,,,
+DeepSeek V4.1 Flash,deepseekv4.1flash,0.929,0.567,M2,,,0.498,0.552,logic+code_v3+vibe-code+code-migration-v1-1+terminal-bench-4,90.9,0.946,,,,0.486,0.966,0.873,0.619,,,,,,,
+MiniMax-M3.1-Flash,minimaxm3.1flash,0.923,0.813,M2,,,0.387,0.211,logic+vibe-code+terminal-bench-4,,0.924,,,,,0.843,,0.794,,,,,,,
+DeepSeek V4 Flash 0731,deepseekv4flash0731,0.922,0.686,M2,,,0.258,0.264,vibe-code+terminal-bench-4+skillsbench+ioi+proof_bench,,,0.926,,,,0.852,,0.587,0.517,0.637,,,,,
+Muse Spark 1.3,musespark1.3,0.903,0.8,M2,,,0.247,0.225,vibe-code+terminal-bench-4+ioi+proof_bench,,,0.909,,,,0.944,,0.333,,0.856,,,,,
+Qwen3.8-Max,qwen3.8max,0.897,0.608,M2,,,0.826,0.609,logic+shishan+vibe-code+terminal-bench-4+skillsbench+ioi+proof_bench+mysterymechanism,77.8,0.808,0.959,0.986,0.658,,0.737,,1.079,0.428,1.341,,,,,
+Seed-2.1-pro 0915,seed2.1pro0915,0.887,0.887,M2,,,0.335,0.04,logic,,0.887,,,,,,,,,,,,,,
+GLM-5.3,glm5.3,0.867,0.582,M2,,,0.937,0.951,logic+code_v3+shishan+vibe-code+code-migration-v1-1+terminal-bench-4+skillsbench+ioi+proof_bench+mysterymechanism,90.9,0.852,0.81,0.949,0.679,0.486,0.891,0.816,1.222,0.484,1.333,,,,,
+GPT-5.6 Luna,gpt5.6luna,0.853,0.7,M2,,,0.378,0.312,vibe-code+terminal-bench-4+skillsbench+ioi+proof_bench+mysterymechanism,,,0.992,0.596,,,0.878,,0.365,0.616,1.203,,,,,
+DeepSeek V4 Pro 0813,deepseekv4pro0813,0.842,0.761,M2,,,0.615,0.398,logic+vibe-code+code-migration-v1-1+terminal-bench-4+skillsbench+ioi+proof_bench,,0.847,0.827,,,,0.938,0.77,0.444,0.549,1.005,,,,,
+Grok 4.7,grok4.7,0.803,0.93,M2,,,0.724,0.408,logic+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,,0.938,0.43,1.042,,,0.982,0.788,0.905,,1.124,,,,,
+GPT-5.5,gpt5.5,0.76,0.76,M2,,,0.051,0.174,vibe-code+skillsbench,,,,,,,0.796,,,0.634,,,,,,
+Step 5 Preview,step5preview,0.726,0.753,M2,,,0.837,0.665,logic+shishan+vibe-code+code-migration-v1-1+terminal-bench-4+ioi+proof_bench+mysterymechanism,80.0,0.737,0.694,0.763,0.692,,0.802,0.696,1.0,,0.741,,,,,
+Muse Spark 1.2,musespark1.2,0.7,0.711,M2,,,0.258,0.264,vibe-code+terminal-bench-4+skillsbench+ioi+proof_bench,,,0.711,,,,0.902,,0.19,0.541,0.424,,,,,
+GPT-6 Luna,gpt6luna,0.68,0.901,M2,,,0.787,0.457,logic+vibe-code+code-migration-v1-1+terminal-bench-4+aa_hle+aa_lcr+aa_critpt+aa_scicode+aa_automation+ioi+proof_bench+mysterymechanism,,0.427,1.058,0.8,,,0.931,0.691,0.429,,1.082,0.889,1.008,0.81,0.977,0.798
+Qwen3.8-Flash,qwen3.8flash,0.671,0.671,M3,,,0.335,0.04,logic,,0.671,,,,,,,,,,,,,,
+GLM-5.2,glm5.2,0.669,0.669,M3,,,0.051,0.174,vibe-code+skillsbench,,,,,,,0.729,,,0.46,,,,,,
+GLM-5.3-Flash,glm5.3flash,0.644,0.539,M3,,,0.615,0.398,logic+vibe-code+code-migration-v1-1+terminal-bench-4+skillsbench+ioi+proof_bench,,0.796,0.347,,,,0.351,0.765,1.175,0.409,1.022,,,,,
+Gemini 3.1 Pro,gemini3.1pro,0.61,0.304,M3,,,0.367,0.273,vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,,,0.43,0.856,,,0.365,,0.079,,1.009,,,,,
+Spark X2.6,sparkx2.6,0.574,0.574,M3,,,0.335,0.04,logic,,0.574,,,,,,,,,,,,,,
+DeepSeek V4 Flash,deepseekv4flash,0.56,0.56,M3,,,0.113,0.257,shishan,88.9,,,,0.56,,,,,,,,,,,
+Qwen3.7-Plus,qwen3.7plus,0.534,0.534,M3,,,0.051,0.174,vibe-code+skillsbench,,,,,,,0.529,,,0.554,,,,,,
+Qwen3.8-Max-0902,qwen3.8max0902,0.519,0.519,M3,,,0.089,0.248,code_v3,,,,,,0.519,,,,,,,,,,
+Hy3,hy3,0.499,0.292,M3,,,0.448,0.297,logic+shishan,66.7,0.502,,,0.364,,,,,,,,,,,
+MiMo-V2.6-Pro,mimov2.6pro,0.47,0.47,M3,,,0.089,0.248,code_v3,,,,,,0.47,,,,,,,,,,
+Qwen3.8-27B,qwen3.827b,0.464,0.538,M3,,,0.756,0.575,logic+shishan+vibe-code+aa_hle+aa_lcr+aa_critpt+aa_scicode+aa_automation+skillsbench+ioi+proof_bench,66.7,0.557,0.265,,0.377,,0.739,,,0.389,0.76,0.783,0.992,0.226,0.834,0.724
+Ling-3.1-flash,ling3.1flash,0.448,0.448,M3,,,0.335,0.04,logic,,0.448,,,,,,,,,,,,,,
+MiniMax-M3,minimaxm3,0.379,0.409,M3,,,0.611,0.391,logic+vibe-code+code-migration-v1-1+terminal-bench-4+skillsbench+proof_bench,,0.426,0.298,,,,0.542,0.309,0.032,0.525,,,,,,
+Claude Opus 4.6,claudeopus4.6,0.377,0.377,M3,,,0.113,0.257,shishan,66.7,,,,0.377,,,,,,,,,,,
+MiMo-V2.5-Pro,mimov2.5pro,0.36,0.302,M3,,,0.243,0.219,vibe-code+terminal-bench-4+proof_bench,,,0.364,,,,0.389,,0.016,,,,,,,
+Seed-2.0-lite 0428,seed2.0lite0428,0.299,0.299,M3,,,0.335,0.04,logic,,0.299,,,,,,,,,,,,,,
+Spark X2.5,sparkx2.5,0.227,0.227,M3,,,0.335,0.04,logic,,0.227,,,,,,,,,,,,,,
+Gemini 3.5 Flash Lite,gemini3.5flashlite,0.212,0.447,M3,,,0.374,0.175,logic+vibe-code,,0.213,,,,,0.424,,,,,,,,,
+GPT-5.5 Instant,gpt5.5instant,0.168,0.168,M3,,,0.335,0.04,logic,,0.168,,,,,,,,,,,,,,
+Mistral Medium 3.5,mistralmedium3.5,0.15,0.018,M3,,,0.23,0.183,vibe-code+proof_bench,,,0.149,,,,0.033,,,,,,,,,
+Mistral Large 4,mistrallarge4,0.147,1.048,M1,,,0.815,0.571,logic+shishan+vibe-code+terminal-bench-4+ioi+proof_bench+mysterymechanism,77.8,0.114,0.165,0.503,0.56,,0.894,,0.873,,0.882,,,,,
+openPangu-2.0-Pro,openpangu2.0pro,0.107,0.107,M3,,,0.335,0.04,logic,,0.107,,,,,,,,,,,,,,
+ERNIE 5.1,ernie5.1,0.098,0.098,M3,,,0.335,0.04,logic,,0.098,,,,,,,,,,,,,,
+openPangu-2.0-Flash,openpangu2.0flash,0.094,0.094,M3,,,0.335,0.04,logic,,0.094,,,,,,,,,,,,,,
+Ling-3.0-flash,ling3.0flash,0.089,0.089,M3,,,0.051,0.174,vibe-code+skillsbench,,,,,,,0.033,,,0.285,,,,,,
+Dots3-Note Preview,dots3notepreview,0.088,0.088,M3,,,0.335,0.04,logic,,0.088,,,,,,,,,,,,,,
+Gemini 3.1 Flash Lite,gemini3.1flashlite,0.072,-0.008,M3,,,0.374,0.175,logic+vibe-code,,0.072,,,,,0.0,,,,,,,,,
+LongCat-2.0,longcat2.0,0.044,0.535,M3,,,0.448,0.297,logic+shishan,77.8,0.036,,,0.364,,,,,,,,,,,

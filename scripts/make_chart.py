@@ -22,6 +22,10 @@ for r in rows:
         "tb4": num(r, "r_terminal_bench_4"), "logic": num(r, "r_logic"),
         "proof": num(r, "r_proof_bench"), "myst": num(r, "r_mysterymechanism"),
         "ioi": num(r, "r_ioi"),
+        "aa_hle": num(r, "r_aa_hle"), "aa_lcr": num(r, "r_aa_lcr"),
+        "aa_critpt": num(r, "r_aa_critpt"), "aa_omni": num(r, "r_aa_omniscience"),
+        "aa_scicode": num(r, "r_aa_scicode"), "aa_auto": num(r, "r_aa_automation"),
+        "pcov": float(r.get("P_coverage") or 0),
     })
 
 ev = list(csv.DictReader(open(os.path.join(OUT, "model_evidence.csv"), encoding="utf-8-sig")))
@@ -87,7 +91,7 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 .note{color:var(--mut);font-size:11.5px;margin-top:14px;line-height:1.75}
 </style></head><body><div class="wrap">
 <h1>大模型基准平面 · 规划 P × 执行 X</h1>
-<div class="sub">相对尺度：DeepSeek V4.1 Flash 1017 = 1.0 · 每个来源先除以基准模型在该来源的分数，再按权重合成</div>
+<div class="sub">相对尺度：DeepSeek V4.1 Flash 1017 = 1.0 · 每个来源先除以基准在该源的分数，再按 P 成分 α 同时进入两个轴</div>
 <div class="sub" id="meta"></div>
 <div class="bar">
   <input type="search" id="q" placeholder="搜索模型…">
@@ -100,17 +104,18 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
   <span><i style="background:var(--m3)"></i>M3</span>
   <span>● 双轴已测　○ 仅 P（按 P=X 落点）　◇ 仅 X（按 P=X 落点）</span>
 </div>
-<svg id="chart" viewBox="0 0 1240 820" role="img"></svg>
+<svg id="chart" viewBox="0 0 1420 900" role="img"></svg>
 <div class="tip" id="tip"></div>
 <details><summary>展开数据表</summary><div id="tbl"></div></details>
 <div class="note">
 坐标是「相对基准模型的能力倍数」，1.0 = DeepSeek V4.1 Flash 1017。<br>
 每个来源只取该模型<b>最新一次</b>测量值，不跨月取中位——模型和题库都在迭代，跨版本数值不可比。<br>
 严格版本内比较：致知按<b>月榜</b>切版本，版本内必须含基准 DeepSeek V4.1 Flash 1017，否则整版丢弃；屎山是“难度向上加题、模型从低到高逐级通过”的阶梯赛，整块算一个版本。<br>
-缺 1017 的榜（ProofBench / MysteryMechanism / IOI）用 <b>DeepSeek V4.1 Flash 作链式锚点</b>：先在其他榜测出它相对 1017 的能力（P __SECP__ / X __SECX__），再以它为 1.0 折算该榜其余模型。屎山挑战赛同样不含 1017，其 <b>DeepSeek Flash 经核实为 V4.1 Flash</b>，用同一锚点换算。<br>
-P = 致知 logic（0.50）+ ProofBench（0.30）+ MysteryMechanism（0.20）。X = 屎山（0.32）+ code_v3（0.28）+ Vibe Code（0.14）+ Code Migration（0.09）+ TB4（0.04）+ IOI（0.01）。<br>
+缺 1017 的榜（ProofBench / MysteryMechanism / SkillsBench / IOI / 屎山）用 <b>DeepSeek V4.1 Flash 作链式锚点</b>：先在其他榜测出它相对 1017 的两个因子（P __SECP__ / X __SECX__），再按该榜成分 α 折算出该榜的等效基准。屎山榜单写的 <b>DeepSeek Flash</b> 经核实就是这个 V4.1 Flash，不是 1017。<br>
+每个来源带一个 P 成分 α：r ≈ α·P + (1−α)·X，按可信度 w 做岭回归解出每个模型的 P 与 X，不在源与源之间硬切轴。权重与 α 见 <code>sources.csv</code>。<br>
+Artificial Analysis 只用分项（HLE / AA-LCR / CritPT / SciCode / AutomationBench，合计权重 0.12），不使用它的综合指数；Omniscience 因分数跨度过大暂不计分。<br>
 档位：取两轴中较高者，M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3。<br>
-只有一个轴有证据的模型画在 P=X 对角线上：○ 表示仅 P 已测、◇ 表示仅 X 已测。它们的位置是假设值（未知轴按已知轴填充），档位只反映已测的那一轴，不能据此推断另一轴。公开题来源合计权重 0.05。ProgramBench 不在来源表中（分数区间 0–18.5 过窄，比值法失效）；SkillsBench 因等效基准 __SKILL__ 超过 100% 被守卫剔除。悬停看各源原始分。
+若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。覆盖度（tooltip 里 P x% · X x%）低于 30% 时数值会被先验拉向 1.0 附近，谨慎解读。公开源权重合计 0.21、私有 1.83（归一后公开约 10%）。ProgramBench 不在来源表中（分数区间 0–18.5 过窄，比值法失效）。悬停看各源比值。
 </div>
 </div>
 <script>
@@ -120,7 +125,7 @@ document.getElementById("meta").textContent =
   `有 P 证据 ${META.p} 个模型 · 有 X 证据 ${META.x} 个 · 上图 ${META.plotted} 个（双轴 ${META.dual} · 仅 P ${META.pOnly} · 仅 X ${META.xOnly}）`;
 const NS="http://www.w3.org/2000/svg";
 const svg=document.getElementById("chart"), tip=document.getElementById("tip");
-const W=1240,H=820,L=88,R=1164,T=56,B=744;
+const W=1420,H=900,L=92,R=1330,T=60,B=812;
 const MAX=1.8, MIN=0;
 const px=v=>L+(v-MIN)/(MAX-MIN)*(R-L), py=v=>B-(v-MIN)/(MAX-MIN)*(B-T);
 const COLOR={M0:"var(--m0)",M1:"var(--m1)",M2:"var(--m2)",M3:"var(--m3)"};
@@ -211,7 +216,7 @@ function draw(){
     const t=el("text",{},g); t.textContent=d.name; t.style.fill=COLOR[d.tier];
     const w=t.getComputedTextLength()+4, hgt=14;
 
-    const sp=spot(cx,cy,w,hgt,120,false);
+    const sp=spot(cx,cy,w,hgt,170,false);
     const box=sp?sp.box:
       {x:Math.max(L+PADR,Math.min(R-PADR-w,cx+9)),
        y:Math.max(T+PADR,Math.min(B-PADR-hgt,cy-7)),w,h:hgt};
@@ -227,17 +232,22 @@ function draw(){
     g.addEventListener("click",()=>{pinned=pinned===d?null:d;if(pinned)showTip(d);});
   });
 
-  // 第二轮：把仍有重叠的标签往外挪，直到清空（最多 40 轮）
-  for(let pass=0;pass<40;pass++){
+  // 第二轮：把仍有重叠的标签往外挪，直到清空；挪不动就退到重叠最小的位置
+  const ovOf=box=>{const pad={x:box.x-GAP,y:box.y-GAP,w:box.w+2*GAP,h:box.h+2*GAP};
+    let s=0; for(const o of boxes) if(o!==box) s+=inter(pad,o); return s;};
+  for(let pass=0;pass<60;pass++){
     let moved=false;
     for(let i=0;i<placed.length;i++)for(let j=i+1;j<placed.length;j++){
       const A=placed[i].box, Bx=placed[j].box;
       if(A.x+A.w+GAP<Bx.x||Bx.x+Bx.w+GAP<A.x||A.y+A.h+GAP<Bx.y||Bx.y+Bx.h+GAP<A.y) continue;
       const p=placed[j];
       boxes.splice(boxes.indexOf(p.box),1);
-      const sp2=spot(p.cx,p.cy,p.w,p.hgt,385,true);
-      if(!sp2||sp2.ov>0){ boxes.push(p.box); continue; }
-      const nb=sp2.box;
+      const before=ovOf(p.box);
+      const sp2=spot(p.cx,p.cy,p.w,p.hgt,430,true);
+      let nb=sp2&&sp2.ov===0?sp2.box:null;
+      if(!nb){const alt=spot(p.cx,p.cy,p.w,p.hgt,430,false);
+        if(alt&&alt.ov<before-1) nb=alt.box;}
+      if(!nb){ boxes.push(p.box); continue; }
       p.box=nb;
       const [nx2,ny2]=anchor(p.cx,p.cy,nb);
       p.ln.setAttribute("x2",nx2); p.ln.setAttribute("y2",ny2);
@@ -251,11 +261,13 @@ function draw(){
 
 function showTip(d,e){
   const raw=[["logic",d.logic],["proof",d.proof],["mystery",d.myst],["code_v3",d.code],
-             ["屎山",d.shi],["vibe",d.vibe],["migration",d.mig],["tb4",d.tb4],["ioi",d.ioi]]
+             ["屎山",d.shi],["vibe",d.vibe],["migration",d.mig],["tb4",d.tb4],["ioi",d.ioi],
+             ["AA·HLE",d.aa_hle],["AA·LCR",d.aa_lcr],["AA·CritPT",d.aa_critpt],
+             ["AA·Omni",d.aa_omni],["AA·SciCode",d.aa_scicode],["AA·Auto",d.aa_auto]]
              .filter(x=>x[1]!=null).map(x=>`${x[0]} ${x[1].toFixed(1)}`).join(" · ");
   tip.innerHTML=`<b>${d.name}</b><br>
     <span class="k">P 规划</span> ${f(d.P)}×　<span class="k">X 执行</span> ${f(d.X)}×<br>
-    <span class="k">档位</span> ${d.tier}　<span class="k">X 覆盖</span> ${(d.cov*100).toFixed(0)}%<br>
+    <span class="k">档位</span> ${d.tier}　<span class="k">覆盖</span> P ${(d.pcov*100).toFixed(0)}% · X ${(d.cov*100).toFixed(0)}%<br>
     ${d.only?`<span class="k">注意</span> 仅 ${d.only} 轴已测，位置按 P=X 假设放置<br>`:""}
     ${d.x2!=null?`<span class="k">X2 可恢复</span> ${d.x2.toFixed(1)}%<br>`:""}
     ${raw?`<span class="k">各源比值</span> ${raw}<br>`:""}

@@ -17,12 +17,12 @@
 
 ## 当前快照（2026-10-25）
 
-60 个模型，档位分布 **M0 10 / M1 8 / M2 15 / M3 27**。
+60 个模型，档位分布 **M0 10 / M1 8 / M2 15 / M3 27**。P 与 X 的相关系数 0.805——两个轴分开但不独立。
 
 | 档位 | 模型（P / X，仅列 M0 / M1） |
 |---|---|
-| M0 | GPT-6 Astra (1.77/1.34)、Opus 5 (1.71/1.17)、Opus 5.5 (1.56/1.42)、Gemini 4 Argon (1.54/1.05)、GPT-6.1 Sol (1.54/1.28)、Sonnet 5.5 (1.48/1.28)、Fable 5.1 (1.48/1.22)、GPT-5.6 Sol (1.47/1.01)、GPT-6 Sol (1.41/1.11)、Sonnet 5 (1.35/0.79) |
-| M1 | Muse Wonder 1.0、Kimi-K3、Kimi-K3.1-Pro、Grok 4.6、Haiku 5.5、Gemini 3.8 Flash、Gemini 3.7 Flash、DeepSeek V4.1 Flash 1017 (1.00/1.00) |
+| M0 | GPT-6 Astra (1.687/1.147)、Opus 5 (1.656/0.886)、Gemini 4 Argon (1.479/0.88)、GPT-6.1 Sol (1.478/1.223)、Opus 5.5 (1.473/1.397)、GPT-5.6 Sol (1.42/0.774)、Fable 5.1 (1.393/1.128)、Sonnet 5.5 (1.376/1.331)、GPT-6 Sol (1.35/1.033)、Sonnet 5 (1.269/0.582) |
+| M1 | Muse Wonder 1.0 (1.18/1.067)、Kimi-K3 (1.144/0.453)、Kimi-K3.1-Pro (1.1/1.1)、Grok 4.6 (1.018/0.721)、Gemini 3.8 Flash (1.002/0.698)、DeepSeek V4.1 Flash 1017 (1.0/1.0)、Haiku 5.5 (0.985/1.027)、Mistral Large 4 (0.147/1.048) |
 
 ## 快速开始
 
@@ -31,6 +31,7 @@
 python scripts/fetch_zhizhi.py     # 致知月榜 CSV
 python scripts/fetch_shishan.py    # 屎山挑战赛逐题 JSON
 python scripts/fetch_vals.py       # Vals 榜单
+python scripts/fetch_aa.py         # Artificial Analysis 分项
 
 # 2) 归一化 + 定档
 python scripts/pipeline.py         # -> out/model_evidence.csv, out/model_plane.csv
@@ -50,6 +51,7 @@ python run_all.py
 ## 目录
 
 ```
+sources.csv      来源注册表：状态、公开性、锚点、权重、P 成分 α、测试机制
 data/            抓取到的原始数据（按来源分目录）
   zhizhi/        致知月榜 CSV（logic / code_v3）
   shishan/       屎山挑战赛 assessment-data 快照
@@ -57,21 +59,23 @@ data/            抓取到的原始数据（按来源分目录）
 scripts/
   fetch_*.py     抓取脚本
   vals_map.py    Vals 模型名 → 统一模型名（只映射版本号一致的）
+  aa_map.py      Artificial Analysis slug → 规范键（有歧义的不映射）
   pipeline.py    归一化与定档
   make_chart.py  生成自包含交互图
 out/
   model_evidence.csv   逐源证据：model_key（规范键）、model_id（源站原名）、版本、日期、原始分、基准分、比值
-  model_plane.csv      最终平面：model_key、P / X、档位、标签、来源、X 覆盖
+  model_plane.csv      最终平面：model_key、P / X、档位、标签、来源、P / X 覆盖度
   model_plane.html     交互图
   metrics.json         本次运行算出的链式基准与守卫值（注入图表脚注）
 ```
 
 ## 口径摘要
 
-- **P 轴**：致知 logic（0.50）+ Vals ProofBench（0.30）+ Vals MysteryMechanism（0.20）
-- **X 轴**：屎山（0.32）+ 致知 code_v3（0.28）+ Vibe Code（0.14）+ Code Migration（0.09）+ Terminal-Bench 4（0.04）+ IOI（0.01）——合计 0.88，按 Σw 归一（SkillsBench 0.04 当前被守卫剔除，未计入）
+- **不硬切轴**：每个来源带一个 P 成分 α，同一个比值按 `r ≈ α·P + (1−α)·X` 同时进入两轴，用岭回归（λ=0.03）解出每个模型的 P 与 X
+- **权重与 α**：全部登记在 [sources.csv](sources.csv)，管道直接读表；当前计分来源 15 个（私有 7 个权重合计 1.83 / 公开 8 个合计 0.21），其中 Artificial Analysis 5 个分项合计 0.12
+- **Artificial Analysis** 只取分项（HLE / LCR / CritPT / SciCode / AutomationBench），不用它的综合指数
 - **版本规则**：致知按月切版本，版本内必须含基准模型，否则整版丢弃；屎山是阶梯加题，整块算一个版本，锚点为 V4.1 Flash
-- **链式基准**：缺基准的榜用次新 Flash（`deepseek-v4.1-flash`）作锚点，先测出它相对基准的能力（P 0.946 / X 0.681），再折算其余模型
+- **链式基准**：缺基准的榜用次新 Flash（`deepseek-v4.1-flash`）作锚点，先测出它相对基准的能力（P 0.929 / X 0.567），再按该榜成分 α 折算其余模型
 - **档位**：取两轴较高者 —— M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3
 - **单轴模型**：画在 P=X 对角线上，空心标记（○ 仅 P、◇ 仅 X）
 
@@ -84,6 +88,7 @@ out/
 | 致知 | https://llm2014.github.io/llm_benchmark/ | 个人维护的私有滚动题库 |
 | 屎山挑战赛 | https://shishan.hellomeng.com/ | 私有题库、阶梯式赛制；锚点为 V4.1 Flash |
 | Vals AI | https://www.vals.ai/benchmarks | 私有/公开测试集，第三方跑 |
+| Artificial Analysis | https://artificialanalysis.ai/evaluations | 第三方跑的分项成绩；综合指数不用 |
 
 原始数据版权归各来源所有，本仓库仅保存用于复现的分析快照。代码以 MIT 许可发布，见 [LICENSE](LICENSE)；数据快照的授权范围见 [NOTICE](NOTICE)。
 
@@ -92,6 +97,9 @@ out/
 1. **P 轴仍偏窄**：ARC-AGI-2 与 FrontierMath 的榜单是纯客户端渲染，静态页取不到逐模型数据；HLE 只有旧版厂商自报。目前 P 由致知 + 两个 Vals 推理榜支撑。
 2. **单轴模型的位置是假设值**：画在 P=X 上只是为了可见，不代表另一轴真的等于该值。
 3. **档位阈值是暂定值**：1.25 / 1.00 / 0.70 还没有经过多轮数据校准。
-4. **公开题权重很低**：Terminal-Bench 4、IOI 等公开题合计权重 0.05，仅作补充。
-5. **链式基准依赖次新 Flash**：次新模型自身的能力估计会随主榜更新而变，历史快照不可直接横比。
-6. **屎山的锚点是 V4.1 Flash**：榜单只写官方滚动别名 `DeepSeek Flash`，经核实 2026-10-19 场测试的是 DeepSeek-V4.1-Flash（不是 1017），因此按链式基准换算（等效基准 115.84）。它的分数是 Rasch 映射，不是百分制，不适用 >100% 守卫。
+4. **α 是先验不是测量**：α 目前靠任务结构人工判定，尚未用双因子模型反推；λ=0.03 同样是暂定，它直接决定 P 与 X 的分离幅度。
+5. **链式基准依赖次新 Flash**：次新模型自身的能力估计会随主榜更新而变，历史快照不可直接横比；等效基准接近 100 的源（SkillsBench 98.08）对锚点估计很敏感。
+6. **屎山的锚点是 V4.1 Flash**：榜单只写官方滚动别名 `DeepSeek Flash`，经核实 2026-10-19 场测试的是 DeepSeek-V4.1-Flash（不是 1017），因此按链式基准换算（等效基准 105.53）。它的分数是 Rasch 映射，不是百分制，不适用 >100% 守卫。
+7. **Artificial Analysis 只覆盖 21 个模型**：名称有歧义的（Muse Wonder / Muse Spark 变体）一律不映射；Omniscience 因分数跨度过大暂缓。
+8. **公开源权重合计 0.21、私有 1.83**（归一后公开约 10%）：还没按“私有 0.8 / 公开 0.2”配平，等权重校准时一起处理。
+9. **覆盖度低的模型会被抬高**：只有少数几个执行类榜的模型（X 覆盖 <30%）会被先验拉向均值，尚未设最低覆盖门槛。
