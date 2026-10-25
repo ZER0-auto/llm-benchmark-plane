@@ -48,16 +48,15 @@ glm5.3,GLM-5.3,致知 code_v3,X,A-,0.28,2026-10,2026-10,30.0,61.67,0.4865
 qwen3.8max0902,Qwen3.8-Max-0902,致知 code_v3,X,A-,0.28,2026-10,2026-10,32.0,61.67,0.5189
 mimov2.6pro,MiMo-V2.6-Pro,致知 code_v3,X,A-,0.28,2026-10,2026-10,29.0,61.67,0.4703
 deepseekv4.1flash,DeepSeek V4.1 Flash,致知 code_v3,X,A-,0.28,2026-10,2026-10,30.0,61.67,0.4865
-deepseekv4.1flash1017,DeepSeek Flash,屎山挑战赛,X,A,0.32,board,2026-10-19,78.93,78.93,1.0
-glm5.3,GLM-5.3,屎山挑战赛,X,A,0.32,board,2026-08-14,71.71,78.93,0.9084
-step5preview,Step 5 Preview,屎山挑战赛,X,A,0.32,board,2026-09-21,73.02,78.93,0.9251
-deepseekv4flash,DeepSeek V4 Flash,屎山挑战赛,X,A,0.32,board,2026-08-03,59.06,78.93,0.7482
-qwen3.8max,Qwen3.8-Max,屎山挑战赛,X,A,0.32,board,2026-08-06,69.48,78.93,0.8803
-mistrallarge4,Mistral Large 4,屎山挑战赛,X,A,0.32,board,2026-10-10,59.06,78.93,0.7482
-longcat2.0,LongCat 2.0,屎山挑战赛,X,A,0.32,board,2026-07-06,38.44,78.93,0.487
-hy3,混元 3.0,屎山挑战赛,X,A,0.32,board,2026-07-08,38.44,78.93,0.487
-claudeopus4.6,Claude Opus 4.6,屎山挑战赛,X,A,0.32,board,,39.81,78.93,0.5043
-qwen3.827b,Qwen3.8 27B,屎山挑战赛,X,A,0.32,board,,39.81,78.93,0.5043
+glm5.3,GLM-5.3,屎山挑战赛,X,A,0.32,board,2026-08-14,71.71,115.84,0.619
+step5preview,Step 5 Preview,屎山挑战赛,X,A,0.32,board,2026-09-21,73.02,115.84,0.6304
+deepseekv4flash,DeepSeek V4 Flash,屎山挑战赛,X,A,0.32,board,2026-08-03,59.06,115.84,0.5098
+qwen3.8max,Qwen3.8-Max,屎山挑战赛,X,A,0.32,board,2026-08-06,69.48,115.84,0.5998
+mistrallarge4,Mistral Large 4,屎山挑战赛,X,A,0.32,board,2026-10-10,59.06,115.84,0.5098
+longcat2.0,LongCat 2.0,屎山挑战赛,X,A,0.32,board,2026-07-06,38.44,115.84,0.3318
+hy3,混元 3.0,屎山挑战赛,X,A,0.32,board,2026-07-08,38.44,115.84,0.3318
+claudeopus4.6,Claude Opus 4.6,屎山挑战赛,X,A,0.32,board,,39.81,115.84,0.3436
+qwen3.827b,Qwen3.8 27B,屎山挑战赛,X,A,0.32,board,,39.81,115.84,0.3436
 sonnet5.5,Sonnet 5.5,Vals Vibe Code,X,A,0.14,2026-10-24,2026-10-24,92.39,87.73,1.0531
 gemini4argon,Gemini 4 Argon,Vals Vibe Code,X,A,0.14,2026-10-24,2026-10-24,91.91,87.73,1.0476
 haiku5.5,Haiku 5.5,Vals Vibe Code,X,A,0.14,2026-10-24,2026-10-24,90.44,87.73,1.0309

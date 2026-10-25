@@ -107,7 +107,7 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 坐标是「相对基准模型的能力倍数」，1.0 = DeepSeek V4.1 Flash 1017。<br>
 每个来源只取该模型<b>最新一次</b>测量值，不跨月取中位——模型和题库都在迭代，跨版本数值不可比。<br>
 严格版本内比较：致知按<b>月榜</b>切版本，版本内必须含基准 DeepSeek V4.1 Flash 1017，否则整版丢弃；屎山是“难度向上加题、模型从低到高逐级通过”的阶梯赛，整块算一个版本。<br>
-缺 1017 的榜（ProofBench / MysteryMechanism / IOI）用 <b>DeepSeek V4.1 Flash 作链式锚点</b>：先在其他榜测出它相对 1017 的能力（P __SECP__ / X __SECX__），再以它为 1.0 折算该榜其余模型。<br>
+缺 1017 的榜（ProofBench / MysteryMechanism / IOI）用 <b>DeepSeek V4.1 Flash 作链式锚点</b>：先在其他榜测出它相对 1017 的能力（P __SECP__ / X __SECX__），再以它为 1.0 折算该榜其余模型。屎山挑战赛同样不含 1017，其 <b>DeepSeek Flash 经核实为 V4.1 Flash</b>，用同一锚点换算。<br>
 P = 致知 logic（0.50）+ ProofBench（0.30）+ MysteryMechanism（0.20）。X = 屎山（0.32）+ code_v3（0.28）+ Vibe Code（0.14）+ Code Migration（0.09）+ TB4（0.04）+ IOI（0.01）。<br>
 档位：取两轴中较高者，M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3。<br>
 只有一个轴有证据的模型画在 P=X 对角线上：○ 表示仅 P 已测、◇ 表示仅 X 已测。它们的位置是假设值（未知轴按已知轴填充），档位只反映已测的那一轴，不能据此推断另一轴。公开题来源合计权重 0.05。ProgramBench 不在来源表中（分数区间 0–18.5 过窄，比值法失效）；SkillsBench 因等效基准 __SKILL__ 超过 100% 被守卫剔除。悬停看各源原始分。

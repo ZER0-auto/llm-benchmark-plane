@@ -26,9 +26,9 @@ LOGIC_MONTHS = months("logic")
 CODE_MONTHS = months("code_v3")
 
 PAREN = re.compile(r"\s*[\(（][^)）]*[\)）]\s*$")
-# 屎山榜单只写产品线现役名（DeepSeek Flash），按“同产品线只留现役一席”的规则
-# 映射到 1017；这条映射是显式假设，见 METHOD.md 与 README 已知限制。
-ALIAS = {"混元3.0": "hy3", "deepseekflash": "deepseekv4.1flash1017"}
+# 官方 API 的 deepseek-flash 是滚动别名（2026-09-10 -> V4.1 Flash，2026-10-17 -> 1017）；
+# 经核实，屎山 2026-10-19 场测的是 V4.1 Flash，映射到次新 Flash 走链式基准。
+ALIAS = {"混元3.0": "hy3", "deepseekflash": "deepseekv4.1flash"}
 ANCHOR_KEY = "deepseekv4.1flash1017"
 MIN_MODELS_PER_VERSION = 5      # 版本内至少这么多个模型才可用
 
@@ -167,7 +167,21 @@ def main():
     print("版本检查：")
     logic_ok = usable_versions(logic_rows, "logic")
     code_ok = usable_versions(code_rows, "code_v3")
-    shi_ok = usable_versions(shi_rows, "shishan")
+
+    # 屎山整块算一个版本：含主基准可直接用，只含副锚点则走链式
+    shi_ok, shi_chained = {}, {}
+    shi_by_ver = {}
+    for r in shi_rows: shi_by_ver.setdefault(r["version"], []).append(r)
+    for ver, rs in shi_by_ver.items():
+        if any(r["key"] == ANCHOR_KEY for r in rs) and len(rs) >= MIN_MODELS_PER_VERSION:
+            shi_ok[ver] = rs
+            print(f"  shishan {ver}: {len(rs)} 个模型，含基准 OK")
+        elif any(r["key"] == SECONDARY_KEY for r in rs) and len(rs) >= MIN_MODELS_PER_VERSION:
+            shi_chained[ver] = rs
+            print(f"  shishan {ver}: {len(rs)} 个模型，含副锚点 DeepSeek V4.1 Flash -> 链式换算")
+        else:
+            print(f"  shishan {ver}: {len(rs)} 个模型，无可用锚点，丢弃")
+
     vals_ok, vals_chained = {}, {}
     for slug, rows in vals.items():
         if slug not in SOURCES: continue
@@ -218,19 +232,24 @@ def main():
             sec[ax] = sum(w * v for w, v in vals_ax) / sum(w for w, _ in vals_ax)
     print("副锚点 DeepSeek V4.1 Flash 相对能力：P=%.4f X=%.4f" % (sec.get("P", 0), sec.get("X", 0)))
 
-    # 链式：用副锚点把缺主锚点的榜单接进来
+    # 链式：用副锚点把缺主锚点的榜单接进来（含屎山）
+    chained = dict(vals_chained)
+    if shi_chained:
+        chained["shishan"] = [r for rs in shi_chained.values() for r in rs]
     dropped = {}
-    for slug, rows in vals_chained.items():
+    for slug, rows in chained.items():
         ax = SOURCES[slug][1]
         if ax not in sec: 
             print(f"  {slug}: 副锚点无 {ax} 轴比值，跳过"); continue
         ref = next((r for r in rows if r["key"] == SECONDARY_KEY), None)
         if not ref: continue
         scale = ref["value"] / sec[ax]
-        if scale > 100:
+        if scale > 100 and slug != "shishan":
             print(f"  {slug}: 等效基准 {scale:.2f} > 100%，比值法失效，丢弃")
             dropped[slug] = scale
             continue
+        if scale > 100:
+            print(f"  {slug}: 等效基准 {scale:.2f}（Rasch 分不是百分制，跳过 >100 守卫）")
         print(f"  {slug}: 副锚点原始 {ref['value']:.2f} / 相对 {sec[ax]:.4f} -> 等效基准 {scale:.2f}")
         for r in rows:
             if r["key"] == SECONDARY_KEY: continue
