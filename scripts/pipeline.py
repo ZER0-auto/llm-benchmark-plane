@@ -8,7 +8,7 @@
   4. 同一版本内只做一次比值：score / anchor_score_in_that_version
   5. 不做跨版本取中位、不做跨版本桥接
 """
-import csv, json, re, math, os, statistics
+import csv, json, re, math, os, statistics, sys
 from collections import Counter
 from vals_map import VALS_MAP
 from aa_map import AA_MAP, AA_UNMAPPED
@@ -242,12 +242,7 @@ def ratio_bounds(vals):
     v = sorted(vals)
     if len(v) < 4:
         return v[0], v[-1]
-
-    def q(frac):
-        i = (len(v) - 1) * frac
-        lo = int(i); hi = min(lo + 1, len(v) - 1)
-        return v[lo] + (v[hi] - v[lo]) * (i - lo)
-    return q(0.10), q(0.90)
+    return quantile(v, 0.10), quantile(v, 0.90)
 
 
 def fit_px_bounded(items, lam=LAM_DEFAULT, bounds=None):
@@ -349,7 +344,15 @@ def fit_rmse(items, px, x_):
     return math.sqrt(sum(w * (r - (a * px + (1 - a) * x_)) ** 2 for w, a, r in items) / tw)
 
 
-def main():
+
+# ---------- 装配证据：加载 + 版本筛选 + 守卫 + 锚点 / 链式 / 零点（不写文件） ----------
+def build():
+    """返回 state（per_source / anchor_of / sec / zero_* / metrics）。
+
+    拆成 build ↔ evidence ↔ fit_all 是 bootstrap 的前提：重采样只改"哪些源在场、来几次"，
+    版本选取、链式等效基准、零点 z 全部固定复用（每次重采样都重估锚点会把二阶不确定性
+    混进区间里）。解算入口只有 `fit_model` 一个，管道和 bootstrap 走同一条路径。
+    """
     logic_rows = load_logic()
     code_rows = load_code_v3()
     shi_rows, x2map = load_shishan()
@@ -529,8 +532,16 @@ def main():
         "zero_skip_z": {s: round(z, 4) for s, z in sorted(zero_skip_z.items())},
         "thresholds": {"M0": 1.25, "M1": 1.00, "M2": 0.70},
     }
-    with open(os.path.join(OUT, "metrics.json"), "w", encoding="utf-8") as mf:
-        json.dump(metrics, mf, ensure_ascii=False, indent=1)
+    return {"per_source": per_source, "anchor_of": anchor_of, "sec": sec,
+            "zero_of": zero_of, "zero_pen": zero_pen, "x2map": x2map,
+            "dropped": dropped, "near": near, "metrics": metrics}
+
+
+# ---------- 二、逐模型证据条目 ----------
+def evidence(st):
+    """把 state 摊成"每个模型手上有哪些源"：parts[k] = [(weight_eff, ratio, source, 做过零点修正)]。"""
+    per_source, anchor_of, zero_of, zero_pen = (st["per_source"], st["anchor_of"],
+                                                st["zero_of"], st["zero_pen"])
 
     def w_eff(s):
         return SOURCES[s]["w"] * zero_pen.get(s, 1.0)
@@ -552,52 +563,128 @@ def main():
     used = set(per_source)
     max_p = sum(w_eff(s) * SOURCES[s]["alpha"] for s in used)
     max_x = sum(w_eff(s) * (1 - SOURCES[s]["alpha"]) for s in used)
+    return {"names": names, "parts": parts, "ev_rows": ev_rows, "max_p": max_p, "max_x": max_x}
 
+
+# ---------- 三、解算（唯一入口） ----------
+def fit_model(ps, max_p, max_x):
+    """一个模型 → {p, x, clamp…, rmse, pcov, xcov, ps}；没有有效证据返回 None。
+
+    管道出点估计、bootstrap 出区间，都调这一个函数：METHOD §15 的"只允许一套估计器"
+    就是靠这个入口保证的——复制一份解算代码，两处就会各自漂移。
+    """
+    # 覆盖度必须与 max_p / max_x 同口径（都用 weight_eff）：分子若用原始权重，
+    # 被零点惩罚降权过的源会把覆盖度算到 1 以上（实测出现 1.04）。
+    # 注意 weight_eff 只含零点惩罚，不含 IRLS 的按模型降权 fac——两轴分子分母
+    # 一致即可，fac 是"这个模型在该源上不可信"，不是"没有证据"。
+    p_parts = [(w * SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
+    x_parts = [(w * (1 - SOURCES[s]["alpha"]), r) for w, r, s, _f in ps]
+    pw = sum(w for w, _ in p_parts); xw = sum(w for w, _ in x_parts)
+    if pw <= 0 and xw <= 0: return None
+    items = [(w, SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
+    # 界只由做过零点修正的榜决定：没修正的榜零点不同（多半是原始 0），
+    # 让它们去顶天花板就等于把坐标重新拉回外推（Mistral Large 4 的 X=1.235 是这么来的）
+    zsrc = [r for w, r, s, f in ps if f]
+    bounds = ratio_bounds(zsrc) if len(zsrc) >= 4 else ratio_bounds([r for _, r, _, _ in ps])
+    p, x, clamp, fac = fit_px_robust(items, bounds=bounds)
+    if p is None: return None
+    rs = [r for _, r, _, _f in ps]
+    return {"p": p, "x": x, "fac": fac, "clamp": 1 if clamp else 0, "clamp_note": clamp,
+            "rmse": fit_rmse(items, p, x),
+            "dw": "+".join(f"{ps[i][2]}×{fac[i]:.2f}" for i in sorted(fac)),
+            "lo": min(rs), "hi": max(rs),
+            "pcov": pw / max_p if max_p else 0,
+            "xcov": xw / max_x if max_x else 0,
+            "ps": ps}
+
+
+def tier_of(top):
+    """档位判定的唯一实现（§8：拿发布出来的三位小数坐标比阈值，不拿原始浮点值）。"""
+    return "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
+
+
+def fit_all(ev):
+    """逐个模型求解；钳位与按残差降权只在这里打印（bootstrap 复用 fit_model 时保持安静）。"""
     fits = {}
+    for k, ps in ev["parts"].items():
+        fit = fit_model(ps, ev["max_p"], ev["max_x"])
+        if fit is None: continue
+        if fit["clamp_note"]: print(f"  {ev['names'][k]}: {fit['clamp_note']}")
+        if fit["fac"]:
+            print(f"  {ev['names'][k]}: 剖面不一致，按残差降权 → " +
+                  "、".join(f"{ps[i][2]}×{fit['fac'][i]:.2f}" for i in sorted(fit["fac"])))
+        fits[k] = fit
+    return fits
+
+
+# ---------- 四、源级 bootstrap：坐标区间 + 档位稳定率 ----------
+BOOT_COLS = ["P_lo", "P_hi", "X_lo", "X_hi", "tier_stability", "tier_mode"]
+BOOT_SEED = 20261026
+
+
+def quantile(sv, frac):
+    """线性插值分位数（与 ratio_bounds 同一套取法）。sv 必须已排序。"""
+    i = (len(sv) - 1) * frac
+    lo = int(i); hi = min(lo + 1, len(sv) - 1)
+    return sv[lo] + (sv[hi] - sv[lo]) * (i - lo)
+
+
+def resample(parts, counts, max_p, max_x):
+    """按"源被抽到几次"调整权重，重解每个模型；返回 {(p, x, tier)} 子集。"""
+    out = {}
     for k, ps in parts.items():
-        # 覆盖度必须与 max_p / max_x 同口径（都用 weight_eff）：分子若用原始权重，
-        # 被零点惩罚降权过的源会把覆盖度算到 1 以上（实测出现 1.04）。
-        # 注意 weight_eff 只含零点惩罚，不含 IRLS 的按模型降权 fac——两轴分子分母
-        # 一致即可，fac 是"这个模型在该源上不可信"，不是"没有证据"。
-        p_parts = [(w * SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
-        x_parts = [(w * (1 - SOURCES[s]["alpha"]), r) for w, r, s, _f in ps]
-        pw = sum(w for w, _ in p_parts); xw = sum(w for w, _ in x_parts)
-        if pw <= 0 and xw <= 0: continue
-        items = [(w, SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
-        # 界只由做过零点修正的榜决定：没修正的榜零点不同（多半是原始 0），
-        # 让它们去顶天花板就等于把坐标重新拉回外推（Mistral Large 4 的 X=1.235 是这么来的）
-        zsrc = [r for w, r, s, f in ps if f]
-        bounds = ratio_bounds(zsrc) if len(zsrc) >= 4 else ratio_bounds([r for _, r, _, _ in ps])
-        p, x, clamp, fac = fit_px_robust(items, bounds=bounds)
-        if p is None: continue
-        if clamp: print(f"  {names[k]}: {clamp}")
-        if fac:
-            print(f"  {names[k]}: 剖面不一致，按残差降权 → " +
-                  "、".join(f"{ps[i][2]}×{fac[i]:.2f}" for i in sorted(fac)))
-        rs = [r for _, r, _, _f in ps]
-        fits[k] = {"p": p, "x": x, "fac": fac, "clamp": 1 if clamp else 0,
-                   "rmse": fit_rmse(items, p, x),
-                   "dw": "+".join(f"{ps[i][2]}×{fac[i]:.2f}" for i in sorted(fac)),
-                   "lo": min(rs), "hi": max(rs),
-                   "pcov": pw / max_p if max_p else 0,
-                   "xcov": xw / max_x if max_x else 0,
-                   "ps": ps}
+        sub = [(w * counts[s], r, s, f) for (w, r, s, f) in ps if s in counts]
+        fit = fit_model(sub, max_p, max_x) if sub else None
+        if fit is None: continue
+        P3, X3 = round(fit["p"], 3), round(fit["x"], 3)
+        out[k] = (P3, X3, tier_of(max(P3, X3)))
+    return out
 
-    ev = open(os.path.join(OUT, "model_evidence.csv"), "w", newline="", encoding="utf-8-sig")
-    w = csv.writer(ev, lineterminator="\n")
-    w.writerow(["model_key", "model_id", "source_model", "source_id", "source", "axis",
-                "alpha_p", "grade", "weight", "weight_eff", "version", "date",
-                "raw", "anchor_raw", "ratio_raw", "zero_z", "ratio"])
-    for (k, r, s, ax, alpha, a, ratio, base, z) in ev_rows:
-        idx = [i for i, (ww, rr, ss, _f) in enumerate(fits[k]["ps"]) if ss == s] if k in fits else []
-        f = fits[k]["fac"].get(idx[0], 1.0) if idx else 1.0
-        w.writerow([k, r["name"], r.get("raw_name", r["name"]), s, SOURCES[s]["name"],
-                    ax, alpha, SOURCES[s]["grade"], SOURCES[s]["w"],
-                    round(SOURCES[s]["w"] * zero_pen.get(s, 1.0) * f, 4), r["version"],
-                    r.get("date", r["version"]), round(r["value"], 2), round(a, 2),
-                    round(base, 4), "" if z is None else round(z, 4), round(ratio, 4)])
-    ev.close()
 
+def bootstrap(ev, point_tier, runs=1000, seed=BOOT_SEED):
+    """源级 bootstrap：有放回抽"计分源"，每次重解全部模型，取 5~95 分位与档位稳定率。
+
+    重采样单位是**源**而不是证据行——某个模型在一张榜上有 30 行是 30 条读数，
+    不是 30 次独立观测；按行抽会把这张榜的自相关当成信息的量。
+    版本、链式等效基准、零点 z 全部沿用 build 的结果（不重估），
+    解算走 fit_model 同一条路径（含 p10~p90 钳位与 IRLS 按模型降权）。
+
+    `tier_stability` = 重采样里落回点估计同一档的比例；0.5 上下就是"这档是掷骰子掷出来的"。
+    解不出来（抽到的源对这个模型一个都不剩）的次数超过一半就不给区间，避免把
+    "没证据"读成"很确定"。
+    """
+    import random
+    src_ids = sorted({s for ps in ev["parts"].values() for (_w, _r, s, _f) in ps})
+    rng = random.Random(seed)
+    acc, tacc = {k: [] for k in ev["parts"]}, {k: [] for k in ev["parts"]}
+    for _ in range(runs):
+        counts = Counter(rng.choices(src_ids, k=len(src_ids)))
+        got = resample(ev["parts"], counts, ev["max_p"], ev["max_x"])
+        for k, (P3, X3, t) in got.items():
+            acc[k].append((P3, X3)); tacc[k].append(t)
+    out = {}
+    for k, v in acc.items():
+        if len(v) < runs // 2: continue
+        pv = sorted(x[0] for x in v); xv = sorted(x[1] for x in v)
+        modal = Counter(tacc[k]).most_common(1)[0][0]
+        out[k] = {"P_lo": round(quantile(pv, 0.05), 3), "P_hi": round(quantile(pv, 0.95), 3),
+                  "X_lo": round(quantile(xv, 0.05), 3), "X_hi": round(quantile(xv, 0.95), 3),
+                  "stability": round(sum(1 for t in tacc[k] if t == point_tier.get(k)) / len(v), 3),
+                  "n": len(v), "modal_tier": modal}
+    stabilities = sorted(out[k]["stability"] for k in out)
+    out["_meta"] = {"runs": runs, "seed": seed, "unit": "source", "sources": len(src_ids),
+                    "interval": "5-95%", "models": len(out), "models_total": len(ev["parts"]),
+                    "width_med_p": round(statistics.median([out[k]["P_hi"] - out[k]["P_lo"] for k in out]), 3),
+                    "width_med_x": round(statistics.median([out[k]["X_hi"] - out[k]["X_lo"] for k in out]), 3),
+                    "stability_med": round(quantile(stabilities, 0.5), 3),
+                    "unstable": sorted(k for k in out if out[k]["stability"] < 0.5),
+                    "modal_differs": sorted(k for k in out if out[k]["modal_tier"] != point_tier.get(k))}
+    return out
+
+
+# ---------- 五、落盘 ----------
+def plane_rows(st, ev, fits, boot=None):
+    names, x2map = ev["names"], st["x2map"]
     plane = []
     for k, fit in fits.items():
         p, x = fit["p"], fit["x"]
@@ -607,7 +694,7 @@ def main():
         # 读者无法核对，而且权重第 5 位小数的抖动就能翻档。
         P3, X3 = round(p, 3), round(x, 3)
         top = max(P3, X3)
-        tier = "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
+        tier = tier_of(top)
         # 距下一档还差多少：档位带宽 0.25，差值只有 0.01 量级就说明是临界点
         nxt = {"M0": None, "M1": 1.25, "M2": 1.00, "M3": 0.70}[tier]
         gap = "" if nxt is None else round(max(0.0, nxt - top), 3)
@@ -619,19 +706,80 @@ def main():
                "+".join(s for _, _, s, _f in ps),
                round(x2map.get(k, -1), 1) if k in x2map else ""]
         row += [round(rmap[s], 3) if s in rmap else "" for s in ORDER]
+        if boot is not None:
+            b = boot.get(k)
+            row += ([b["P_lo"], b["P_hi"], b["X_lo"], b["X_hi"], b["stability"], b["modal_tier"]]
+                    if b else [""] * 6)
         plane.append(row)
+    return plane
 
-    cols = ["model_id", "model_key", "P", "X", "tier", "tags", "axis_only",
-            "P_coverage", "X_coverage", "fit_rmse", "next_tier_gap", "ratio_range", "clamped",
-            "downweighted", "sources", "X2"] + \
-           ["r_" + s.replace("-", "_") for s in ORDER]
+
+def plane_cols(boot=False):
+    return (["model_id", "model_key", "P", "X", "tier", "tags", "axis_only",
+             "P_coverage", "X_coverage", "fit_rmse", "next_tier_gap", "ratio_range", "clamped",
+             "downweighted", "sources", "X2"] +
+            ["r_" + s.replace("-", "_") for s in ORDER] + (BOOT_COLS if boot else []))
+
+
+def write_evidence(st, ev, fits):
+    zero_pen = st["zero_pen"]
+    evf = open(os.path.join(OUT, "model_evidence.csv"), "w", newline="", encoding="utf-8-sig")
+    cw = csv.writer(evf, lineterminator="\n")
+    cw.writerow(["model_key", "model_id", "source_model", "source_id", "source", "axis",
+                 "alpha_p", "grade", "weight", "weight_eff", "version", "date",
+                 "raw", "anchor_raw", "ratio_raw", "zero_z", "ratio"])
+    for (k, r, s, ax, alpha, a, ratio, base, z) in ev["ev_rows"]:
+        idx = [i for i, (ww, rr, ss, _f) in enumerate(fits[k]["ps"]) if ss == s] if k in fits else []
+        f = fits[k]["fac"].get(idx[0], 1.0) if idx else 1.0
+        cw.writerow([k, r["name"], r.get("raw_name", r["name"]), s, SOURCES[s]["name"],
+                     ax, alpha, SOURCES[s]["grade"], SOURCES[s]["w"],
+                     round(SOURCES[s]["w"] * zero_pen.get(s, 1.0) * f, 4), r["version"],
+                     r.get("date", r["version"]), round(r["value"], 2), round(a, 2),
+                     round(base, 4), "" if z is None else round(z, 4), round(ratio, 4)])
+    evf.close()
+
+
+def main():
+    argv = sys.argv[1:]
+    runs = int(argv[argv.index("--bootstrap") + 1]) if "--bootstrap" in argv else 0
+    seed = int(argv[argv.index("--boot-seed") + 1]) if "--boot-seed" in argv else BOOT_SEED
+
+    st = build()
+    ev = evidence(st)
+    fits = fit_all(ev)
+    write_evidence(st, ev, fits)
+
+    point_tier = {k: tier_of(max(round(f["p"], 3), round(f["x"], 3))) for k, f in fits.items()}
+    boot = None
+    if runs:
+        import time
+        t0 = time.time()
+        boot = bootstrap(ev, point_tier, runs, seed)
+        meta = boot["_meta"]
+        st["metrics"]["bootstrap"] = {k: meta[k] for k in meta}
+        print(f"bootstrap：{meta['runs']} 次 × {meta['models_total']} 个模型"
+              f"（重采样单位={meta['unit']}，{meta['sources']} 个源，seed={meta['seed']}，"
+              f"区间 {meta['interval']}），耗时 {time.time() - t0:.0f}s")
+        print(f"  区间宽度中位：P {meta['width_med_p']} / X {meta['width_med_x']}；"
+              f"档位稳定率中位 {meta['stability_med']}；"
+              f"稳定率 <0.5 的 {len(meta['unstable'])} 个；多数派档位与点估计不同的 {len(meta['modal_differs'])} 个")
+        worst = sorted((k for k in boot if k != "_meta"), key=lambda k: boot[k]["stability"])[:5]
+        for k in worst:
+            b = boot[k]
+            print(f"  最不稳：{ev['names'][k]:24s} {point_tier[k]}（多数派 {b['modal_tier']}）"
+                  f" 稳定率 {b['stability']:.2f}  P [{b['P_lo']}~{b['P_hi']}] X [{b['X_lo']}~{b['X_hi']}]")
+
+    plane = plane_rows(st, ev, fits, boot)
     pl = open(os.path.join(OUT, "model_plane.csv"), "w", newline="", encoding="utf-8-sig")
-    w = csv.writer(pl, lineterminator="\n"); w.writerow(cols)
-    for r in sorted(plane, key=lambda x: (-x[2], -x[3])): w.writerow(r)
+    cw = csv.writer(pl, lineterminator="\n"); cw.writerow(plane_cols(boot=boot is not None))
+    for r in sorted(plane, key=lambda x: (-x[2], -x[3])): cw.writerow(r)
     pl.close()
+    with open(os.path.join(OUT, "metrics.json"), "w", encoding="utf-8") as mf:
+        json.dump(st["metrics"], mf, ensure_ascii=False, indent=1)
 
     print(f"\nplane={len(plane)} tiers={dict(Counter(r[4] for r in plane))}")
-    print("基准分（各源各版本）：", {f"{k[0]}@{k[1]}": round(v, 2) for k, v in anchor_of.items()})
+    print("基准分（各源各版本）：", {f"{k[0]}@{k[1]}": round(v, 2) for k, v in st["anchor_of"].items()})
+
 
 if __name__ == "__main__":
     main()

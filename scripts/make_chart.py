@@ -29,6 +29,10 @@ for r in rows:
         "fit": float(r.get("fit_rmse") or 0), "rrange": r.get("ratio_range") or "",
         "dw": r.get("downweighted") or "",
         "clamp": r.get("clamped") == "1",
+        # 源级 bootstrap（跑管道时带 --bootstrap 才有；缺列就是没算）
+        "p_lo": num(r, "P_lo"), "p_hi": num(r, "P_hi"),
+        "x_lo": num(r, "X_lo"), "x_hi": num(r, "X_hi"),
+        "stab": num(r, "tier_stability"), "tmode": r.get("tier_mode") or "",
     })
 
 ev = list(csv.DictReader(open(os.path.join(OUT, "model_evidence.csv"), encoding="utf-8-sig")))
@@ -130,7 +134,7 @@ P 与 X 被限制在该模型<b>观测比值的区间</b>内：无约束解会�
 权重已按留一残差校准（<code>scripts/calibrate_weights.py</code>，口径见 METHOD §15）：注册表里 <code>weight_prior</code> 是初猜、<code>weight_cal</code> 是校准值，管道优先用后者；公开源占比按上限 0.20 配平。<br>
 Artificial Analysis 只用分项（HLE / AA-LCR / CritPT / SciCode / AutomationBench），不使用它的综合指数；Omniscience 因分数跨度过大暂不计分。<br>
 档位：取两轴中较高者，M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3。<br>
-若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。两轴覆盖度都低于 35% 的点画成虚线环并淡显标签（本轮 __THIN__ 个），数值靠先验撑住、只作参考；不剔除，因为单一来源本身也是证据。本轮守卫剔除：__DROPPED__（等效基准超过该榜满分、或不足满分 5%，比值失真）；接近满分的榜：__NEAR__（比值放大，谨慎解读）；ProgramBench 不在来源表中（分数区间 0–18.5 过窄）。悬停看各源比值。
+若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。两轴覆盖度都低于 35% 的点画成虚线环并淡显标签（本轮 __THIN__ 个），数值靠先验撑住、只作参考；不剔除，因为单一来源本身也是证据。本轮守卫剔除：__DROPPED__（等效基准超过该榜满分、或不足满分 5%，比值失真）；接近满分的榜：__NEAR__（比值放大，谨慎解读）；ProgramBench 不在来源表中（分数区间 0–18.5 过窄）。__BOOT__ 悬停看各源比值、区间与档位稳定率。
 </div>
 </div>
 <script>
@@ -344,6 +348,7 @@ function showTip(d,e){
     ${d.only?`<span class="k">注意</span> 仅 ${d.only} 轴已测，位置按 P=X 假设放置<br>`:""}
     ${(d.pcov<0.35&&d.cov<0.35)?`<span class="k">证据薄</span> 两轴覆盖度都低于 35%，数值靠先验撑住，只作参考<br>`:""}
     <span class="k">拟合</span> RMSE ${d.fit.toFixed(2)} · 观测比值 ${d.rrange}${d.clamp?"（坐标已钳位到该区间）":""}<br>
+    ${d.p_lo!=null?`<span class="k">源级 bootstrap</span> P ${d.p_lo}~${d.p_hi} · X ${d.x_lo}~${d.x_hi} · 档位稳定率 ${(d.stab*100).toFixed(0)}%${d.tmode&&d.tmode!==d.tier?`（多数派 ${d.tmode}）`:""}<br>`:""}
     ${d.dw?`<span class="k">降权</span> 这个模型上剖面打架的源：${d.dw}<br>`:""}
     ${d.x2!=null?`<span class="k">X2 可恢复</span> ${d.x2.toFixed(1)}%<br>`:""}
     ${raw?`<span class="k">各源比值</span> ${raw}<br>`:""}
@@ -367,9 +372,12 @@ q.addEventListener("input",()=>{
 });
 
 const tbl=document.getElementById("tbl");
-tbl.innerHTML="<table><thead><tr><th>模型</th><th>P</th><th>X</th><th>档位</th><th>在图上</th><th>P 覆盖</th><th>X 覆盖</th><th>来源</th></tr></thead><tbody>"+
+tbl.innerHTML="<table><thead><tr><th>模型</th><th>P</th><th>X</th><th>档位</th><th>P 区间</th><th>X 区间</th><th>档位稳定率</th><th>在图上</th><th>P 覆盖</th><th>X 覆盖</th><th>来源</th></tr></thead><tbody>"+
  DATA.slice().sort((a,b)=>b.P-a.P).map(d=>`<tr><td>${d.name}</td>
- <td>${f(d.P)}</td><td>${f(d.X)}</td><td>${d.tier}</td><td>${(d.P>=0&&d.X>=0)?"是":"否（坐标为负）"}</td>
+ <td>${f(d.P)}</td><td>${f(d.X)}</td><td>${d.tier}</td>
+ <td>${d.p_lo==null?"—":d.p_lo+"~"+d.p_hi}</td><td>${d.x_lo==null?"—":d.x_lo+"~"+d.x_hi}</td>
+ <td>${d.stab==null?"—":(d.stab*100).toFixed(0)+"%"+(d.tmode&&d.tmode!==d.tier?"（多数派 "+d.tmode+"）":"")}</td>
+ <td>${(d.P>=0&&d.X>=0)?"是":"否（坐标为负）"}</td>
  <td>${(d.pcov*100).toFixed(0)}%</td><td>${(d.cov*100).toFixed(0)}%</td><td style="text-align:left;color:#6b7280">${d.src}</td></tr>`).join("")+
  "</tbody></table>";
 
@@ -385,6 +393,17 @@ DROP_NAMES = "、".join(k for k in METRICS.get("dropped", {})) or "无"
 NEAR_NAMES = "、".join(METRICS.get("near_ceiling", [])) or "无"
 html = html.replace("__DROPPED__", DROP_NAMES).replace("__NEAR__", NEAR_NAMES)
 html = html.replace("__THIN__", str(meta["thin"]))
+BOOT = METRICS.get("bootstrap") or {}
+if BOOT:
+    html = html.replace("__BOOT__", (
+        f"表格与 tooltip 里的区间来自<b>源级 bootstrap</b>（{BOOT['runs']} 次有放回重采样，"
+        f"单位=计分源 {BOOT['sources']} 个，seed={BOOT['seed']}，取 {BOOT['interval']} 分位）："
+        f"区间宽度中位 P {BOOT['width_med_p']} / X {BOOT['width_med_x']}，"
+        f"档位稳定率中位 {BOOT['stability_med']}；稳定率低于 50% 的有 {len(BOOT['unstable'])} 个"
+        f"（{'、'.join(BOOT['unstable'])}）；多数派档位与标出的档位不同的有 {len(BOOT['modal_differs'])} 个"
+        f"（{'、'.join(BOOT['modal_differs'])}）。"))
+else:
+    html = html.replace("__BOOT__", "本次运行没有算 bootstrap 区间（跑 python scripts/pipeline.py --bootstrap 1000 之后重出图）。")
 out = os.path.join(OUT, "model_plane.html")
 open(out, "w", encoding="utf-8").write(html)
 print("wrote", out, len(html), "bytes,", len(data), "points")
