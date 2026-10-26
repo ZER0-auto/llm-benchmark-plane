@@ -51,18 +51,37 @@ python scripts/make_chart.py       # -> out/model_plane.html
 python run_all.py
 ```
 
+### 可选：BenchmarkList 交叉校验（不进计分）
+
+```bash
+python scripts/fetch_bl.py                    # 抓快照；站点慢且不稳，失败源不写库，重跑自动续抓
+python scripts/bl_compare.py                  # -> out/bl_crosscheck.csv / .md
+python scripts/bl_compare.py --update-registry  # 把实际覆盖回填进候选清单
+```
+
+单源 JSON 有 200 KB 以上、下载约 8 KB/s，默认 4 线程会把每个连接压到超时；实测 `--workers 1 --timeout 600`
+才把 30 个源全部抓齐。每轮的成功/404/网络失败记在 `data/bl/fetch_status.json`，"多少个源有数据"以它为准。
+
+BL 的逐模型成绩基本来自厂商自己的发布稿，按口径不能进坐标；这个工具把它当外部对照，
+用残差看“哪些源与现有证据打架”。为什么不接进拟合见 [METHOD.md](METHOD.md) §4.1。
+
 ## 目录
 
 ```
 sources.csv      来源注册表：状态、公开性、锚点、权重（初猜 + 校准）、P 成分 α、测试机制
+sources_bl_candidates.csv  BL 候选源（status=candidate，不进计分；mapped_models / snapshot / anchor_kind 由 `bl_compare.py --update-registry` 回填）
 data/            抓取到的原始数据（按来源分目录）
   zhizhi/        致知月榜 CSV（logic / code_v3）
   shishan/       屎山挑战赛 assessment-data 快照
   vals/          Vals 逐模型 accuracy / harness
+  bl/            BenchmarkList 快照（只做交叉校验，不进计分）
+                 bl_rows.csv 逐模型成绩；fetch_status.json 每轮抓取结果（ok/404/failed）
 scripts/
   fetch_*.py     抓取脚本
   vals_map.py    Vals 模型名 → 统一模型名（只映射版本号一致的）
   aa_map.py      Artificial Analysis slug → 规范键（有歧义的不映射）
+  bl_map.py      BenchmarkList model_id → 规范键（只映射能确认的）
+  bl_compare.py  BL 交叉校验：观测比值 vs 平面预测（不参与拟合）
   pipeline.py    归一化与定档
   calibrate_weights.py  留一残差权重校准
   make_chart.py  生成自包含交互图
@@ -72,6 +91,7 @@ out/
   model_plane.html     交互图
   metrics.json         本次运行的链式基准、守卫剔除与标注（注入图表脚注）
   weight_calibration.csv/.json  权重校准明细、收敛过程与扰动验证
+  bl_crosscheck.csv/.md        BL 观测比值 vs 平面预测的残差对照（不进回归）
 ```
 
 ## 口径摘要
@@ -86,7 +106,8 @@ out/
 - **失效守卫**：等效基准超过该榜满分、不足满分 5%、或副锚点得 0 分 → 该榜丢弃；接近满分（>0.9×满分）只标注不剔除。本轮剔除：medscribe、srebench、terminal-bench-science
 - **按模型降权**：同一个模型在不同榜上剖面打架时，残差特别大的源只在该模型上降权（下限 0.25×），生效权重见 `model_evidence.csv` 的 `weight_eff`
 - **档位**：取两轴较高者 —— M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3
-- **图上标记**：两轴覆盖度都 <35% 的点画成虚线白心环（本轮 19 个），只标记不剔除——单一来源也是证据，只是数值靠先验撑住
+- **图上标记**：两轴覆盖度都 <35% 的模型有 18 个（其中 9 个在图上，画成虚线白心环），只标记不剔除——单一来源也是证据，只是数值靠先验撑住
+- **BenchmarkList 不进计分**：BL 的逐模型成绩基本是厂商发布稿（一篇博客会被拆成 6 个“源”），只做外部对照（`scripts/bl_compare.py` → `out/bl_crosscheck.md`），理由见 METHOD §4.1
 - **同模型多档位**：致知月榜同月对同一模型给思考档与非思考档两条，取分值高的那档（与 Vals / AA 默认开启思考一致），被丢的会打印，证据行保留来源原名
 
 完整推导见 [METHOD.md](METHOD.md)，历次设计决策见 [DECISIONS.md](DECISIONS.md)。
@@ -98,6 +119,7 @@ out/
 | 致知 | https://llm2014.github.io/llm_benchmark/ | 个人维护的私有滚动题库 |
 | 屎山挑战赛 | https://shishan.hellomeng.com/ | 私有题库、阶梯式赛制；锚点为 V4.1 Flash |
 | Vals AI | https://www.vals.ai/benchmarks | 私有/公开测试集，第三方跑 |
+| BenchmarkList | https://benchmarklist.com/ | 第三方汇总快照；多数表的原始出处是厂商发布稿，只做交叉校验、不进计分 |
 | Artificial Analysis | https://artificialanalysis.ai/evaluations | 第三方跑的分项成绩；综合指数不用 |
 
 原始数据版权归各来源所有，本仓库仅保存用于复现的分析快照。代码以 MIT 许可发布，见 [LICENSE](LICENSE)；数据快照的授权范围见 [NOTICE](NOTICE)。
@@ -112,7 +134,8 @@ out/
 6. **屎山的锚点是 V4.1 Flash**：榜单只写官方滚动别名 `DeepSeek Flash`，经核实 2026-10-19 场测试的是 DeepSeek-V4.1-Flash（不是 1017），因此按链式基准换算（等效基准 105.53）。它的分数是 Rasch 映射，不是百分制，不适用 >100% 守卫。
 7. **Artificial Analysis 只覆盖 21 个模型**：名称有歧义的（Muse Wonder / Muse Spark 变体）一律不映射；Omniscience 因分数跨度过大暂缓。
 8. **权重校准只看“合群 + 区分度”**：α 判错的源会被误降权；`weight_prior` 与 `weight_cal` 并排存着，可随时对比、退回。
-9. **覆盖度仍不均**：平均覆盖 P 0.47 / X 0.47；已定策：不设剔除门槛，低覆盖点在图上标为虚线白心环并在 tooltip 里给出两轴覆盖度。
+9. **覆盖度仍不均**：平均覆盖 P 0.49 / X 0.48；已定策：不设剔除门槛，低覆盖点在图上标为虚线白心环并在 tooltip 里给出两轴覆盖度。
 10. **有些模型跨榜剖面不一致**（观测比值跨度大、拟合 RMSE 高），双因子模型只能折中；这类点的两轴距离比单榜距离粗，看 tooltip 的 RMSE 判断可信度。
 11. **零点只在 17 个源上成立**：其余 14 个源仍是单点归一（零点=原始 0），与修正过的源混在同一套坐标里是主要的近似来源；已用“不让它们决定边界 + 按 z 降权”压住，但没消除。
-12. **档位阈值沿用 1.25 / 1.00 / 0.70**：引入零点后语义更严，分布随之变化（M2 20→15，M3 23→29），还没有重定档。
+12. **档位阈值沿用 1.25 / 1.00 / 0.70**：引入零点后语义更严，分布随之变化（M2 20→15，M3 23→29），还没有重定档。`model_plane.csv` 的 `next_tier_gap` 给出距下一档的距离，临界模型（如 Haiku 5.5 差 0.007 到 M0）应当按“临界”读，不要按“稳进”读。
+13. **BenchmarkList 只做交叉校验**：BL 里能同时含锚点的基本是厂商发布稿，第三方全量快照（如 GPQA 那份 485 行的 AA 表，映射后 33 个模型）普遍不含 1017，只能用；因此 30 个候选里 28 个可用于对照，但其中 21 个来自同三个发布事件（kimi.ai 一家就占 14 个）。接进拟合会违反“不做厂商自报加权平均”，见 METHOD §4.1。
