@@ -335,14 +335,21 @@ def main():
     vals_ok, vals_chained = {}, {}
     for slug, rows in vals.items():
         if slug not in SOURCES: continue
-        if any(r["key"] == ANCHOR_KEY for r in rows):
+        n = len(rows)
+        has_pri = any(r["key"] == ANCHOR_KEY for r in rows)
+        has_sec = any(r["key"] == SECONDARY_KEY for r in rows)
+        # 模型数下限与 usable_versions / 屎山分支一致：含锚点但只有个位数模型的
+        # 快照不得进比值——否则锚点自己会被钉成 1.0/1.0，这条源的全部权重就压在
+        # 一个没有信息量的点上。此前只有 1~4 个模型的尾巴源能悄悄影响基准坐标。
+        if has_pri and n >= MIN_MODELS_PER_VERSION:
             vals_ok[slug] = rows
-            print(f"  {slug}: {len(rows)} 个模型，含基准 OK")
-        elif any(r["key"] == SECONDARY_KEY for r in rows):
+            print(f"  {slug}: {n} 个模型，含基准 OK")
+        elif has_sec and n >= MIN_MODELS_PER_VERSION:
             vals_chained[slug] = rows
-            print(f"  {slug}: {len(rows)} 个模型，含副锚点 DeepSeek V4.1 Flash -> 链式换算")
+            print(f"  {slug}: {n} 个模型，含副锚点 DeepSeek V4.1 Flash -> 链式换算")
         else:
-            print(f"  {slug}: {len(rows)} 个模型，无可用锚点，丢弃")
+            why = f"仅 {n} 个模型" if (has_pri or has_sec) else "无可用锚点"
+            print(f"  {slug}: {n} 个模型，{why}，丢弃")
 
     # 每个模型只取最新可用版本
     def latest(by_ver):
@@ -492,8 +499,12 @@ def main():
 
     fits = {}
     for k, ps in parts.items():
-        p_parts = [(SOURCES[s]["w"] * SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
-        x_parts = [(SOURCES[s]["w"] * (1 - SOURCES[s]["alpha"]), r) for w, r, s, _f in ps]
+        # 覆盖度必须与 max_p / max_x 同口径（都用 weight_eff）：分子若用原始权重，
+        # 被零点惩罚降权过的源会把覆盖度算到 1 以上（实测出现 1.04）。
+        # 注意 weight_eff 只含零点惩罚，不含 IRLS 的按模型降权 fac——两轴分子分母
+        # 一致即可，fac 是"这个模型在该源上不可信"，不是"没有证据"。
+        p_parts = [(w * SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
+        x_parts = [(w * (1 - SOURCES[s]["alpha"]), r) for w, r, s, _f in ps]
         pw = sum(w for w, _ in p_parts); xw = sum(w for w, _ in x_parts)
         if pw <= 0 and xw <= 0: continue
         items = [(w, SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
@@ -537,10 +548,13 @@ def main():
         ps = fit["ps"]
         top = max(p, x)
         tier = "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
+        # 距下一档还差多少：档位带宽 0.25，差值只有 0.01 量级就说明是临界点
+        nxt = {"M0": None, "M1": 1.25, "M2": 1.00, "M3": 0.70}[tier]
+        gap = "" if nxt is None else round(max(0.0, nxt - top), 3)
         tag = ("P+" if p >= 1.25 else "") + ("X+" if x >= 1.25 else "") + ("0锚" if k == ZERO_KEY else "")
         rmap = {s: r for w, r, s, _f in ps}
         row = [names[k], k, round(p, 3), round(x, 3), tier, tag, "",
-               round(fit["pcov"], 3), round(fit["xcov"], 3), round(fit["rmse"], 3),
+               round(fit["pcov"], 3), round(fit["xcov"], 3), round(fit["rmse"], 3), gap,
                f"{fit['lo']:.2f}~{fit['hi']:.2f}", fit["clamp"], fit["dw"],
                "+".join(s for _, _, s, _f in ps),
                round(x2map.get(k, -1), 1) if k in x2map else ""]
@@ -548,7 +562,7 @@ def main():
         plane.append(row)
 
     cols = ["model_id", "model_key", "P", "X", "tier", "tags", "axis_only",
-            "P_coverage", "X_coverage", "fit_rmse", "ratio_range", "clamped",
+            "P_coverage", "X_coverage", "fit_rmse", "next_tier_gap", "ratio_range", "clamped",
             "downweighted", "sources", "X2"] + \
            ["r_" + s.replace("-", "_") for s in ORDER]
     pl = open(os.path.join(OUT, "model_plane.csv"), "w", newline="", encoding="utf-8-sig")

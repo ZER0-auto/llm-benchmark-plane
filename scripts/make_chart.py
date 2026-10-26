@@ -45,9 +45,13 @@ for e in ev:
 for d in data:
     d["pdate"] = dates.get((d["key"], "P"), "")
     d["xdate"] = dates.get((d["key"], "X"), "")
-meta = {"plotted": len(data), "dual": sum(1 for d in data if not d["only"]),
-        "pOnly": sum(1 for d in data if d["only"] == "P"),
-        "xOnly": sum(1 for d in data if d["only"] == "X"),
+plotted = [d for d in data if d["P"] >= 0 and d["X"] >= 0]
+meta = {"plotted": len(plotted),
+        "dual": sum(1 for d in plotted if not d["only"]),
+        "pOnly": sum(1 for d in plotted if d["only"] == "P"),
+        "xOnly": sum(1 for d in plotted if d["only"] == "X"),
+        # 虚线白心环只画得出来给已绘制的点：负坐标的模型只能查表，不能算进"图上 N 个"
+        "thin": sum(1 for d in plotted if d["pcov"] < 0.35 and d["cov"] < 0.35),
         "p": len({e.get("model_key", e["model_id"]) for e in ev if e["axis"] == "P"}),
         "x": len({e.get("model_key", e["model_id"]) for e in ev if e["axis"] == "X"})}
 
@@ -126,7 +130,7 @@ P 与 X 被限制在该模型<b>观测比值的区间</b>内：无约束解会�
 权重已按留一残差校准（<code>scripts/calibrate_weights.py</code>，口径见 METHOD §15）：注册表里 <code>weight_prior</code> 是初猜、<code>weight_cal</code> 是校准值，管道优先用后者；公开源占比按上限 0.20 配平。<br>
 Artificial Analysis 只用分项（HLE / AA-LCR / CritPT / SciCode / AutomationBench），不使用它的综合指数；Omniscience 因分数跨度过大暂不计分。<br>
 档位：取两轴中较高者，M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3。<br>
-若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。两轴覆盖度都低于 35% 的点画成虚线环并淡显标签（本轮 19 个），数值靠先验撑住、只作参考；不剔除，因为单一来源本身也是证据。本轮守卫剔除：__DROPPED__（等效基准超过该榜满分、或不足满分 5%，比值失真）；接近满分的榜：__NEAR__（比值放大，谨慎解读）；ProgramBench 不在来源表中（分数区间 0–18.5 过窄）。悬停看各源比值。
+若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。两轴覆盖度都低于 35% 的点画成虚线环并淡显标签（本轮 __THIN__ 个），数值靠先验撑住、只作参考；不剔除，因为单一来源本身也是证据。本轮守卫剔除：__DROPPED__（等效基准超过该榜满分、或不足满分 5%，比值失真）；接近满分的榜：__NEAR__（比值放大，谨慎解读）；ProgramBench 不在来源表中（分数区间 0–18.5 过窄）。悬停看各源比值。
 </div>
 </div>
 <script>
@@ -380,6 +384,7 @@ html = html.replace("__SECX__", f'{METRICS.get("sec", {}).get("X", 0):.3f}')
 DROP_NAMES = "、".join(k for k in METRICS.get("dropped", {})) or "无"
 NEAR_NAMES = "、".join(METRICS.get("near_ceiling", [])) or "无"
 html = html.replace("__DROPPED__", DROP_NAMES).replace("__NEAR__", NEAR_NAMES)
+html = html.replace("__THIN__", str(meta["thin"]))
 out = os.path.join(OUT, "model_plane.html")
 open(out, "w", encoding="utf-8").write(html)
 print("wrote", out, len(html), "bytes,", len(data), "points")
