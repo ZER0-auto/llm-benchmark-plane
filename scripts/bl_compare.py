@@ -25,6 +25,8 @@ BL 的逐模型成绩基本来自厂商自己的发布稿（kimi.ai / minimax.io
 快照选择（与 pipeline 的"版本内必须含锚点"同源，排序键不同）：
   1. 只保留含主锚点（1017）或副锚点（次新 Flash）、锚点分 > 0、且映射后 ≥ MIN_MODELS 个模型的快照
      （锚点 0 分 = 该轮没测出东西，比值无定义，与 pipeline 的守卫同一条规则）
+     门槛数的是**映射到的 key**（`mapped`）；其中平面里没有坐标的 key 过得了门槛却产不出残差，
+     所以摘要另给 `in_plane`（= mapped 减去 ghost_keys）与 `ghost_keys`，别让「模型数」虚报样本量
   2. 同一 version 内出现"同 slug 同配置不同分"→ 该 version 是重复发布，整块弃用
      这一条只在旧数据（没有 snapshot_id、只能按天分组）上触发；新抓的数据按快照号分组，
      两份同日快照各自独立，挑一份用即可——比值在同一份表内自洽，不会再被 max 合并。
@@ -210,11 +212,15 @@ def main():
         if not best:
             summary.append({"source_id": sid, "name": meta["name"], "status": "弃用",
                             "snapshot": "", "snapshot_id": "", "anchor_kind": "",
-                            "publisher": "", "rows": 0, "mapped": 0,
+                            "publisher": "", "rows": 0, "mapped": 0, "in_plane": 0, "ghost": [],
                             "self_share": "", "checked": 0, "med": "", "max": "",
                             "max_model": "", "z": "", "spread": "", "reason": reason_of(cands)})
             continue
 
+        # mapped 里可能混着"映射得到、但平面里没有坐标"的 key（BL_MAP 覆盖的模型比平面广，
+        # 那些 key 从未在带锚点的榜上出现过）。它们过得了 ≥5 门槛、却产不出残差，
+        # 所以必须单独计数，否则摘要里的"模型"数是在虚报对照的样本量。
+        ghost = sorted(k for k in best["by_key"] if k not in plane)
         z = None
         if ZERO_KEY in best["by_key"] and best["anchor"][1]:
             z = best["by_key"][ZERO_KEY][0] / best["anchor"][1]
@@ -251,6 +257,7 @@ def main():
             "anchor_kind": best["anchor"][0],
             "publisher": best["publisher"],
             "rows": len(best["rows"]), "mapped": best["n"],
+            "in_plane": best["n"] - len(ghost), "ghost": ghost,
             "self_share": round(best["self_share"], 3),
             "checked": len(resid),
             "z": "" if z is None else round(z, 3),
@@ -268,8 +275,8 @@ def main():
         w.writerows(detail)
 
     cols = ["source_id", "name", "status", "snapshot", "snapshot_id", "anchor_kind",
-            "publisher", "rows", "mapped", "self_share", "zero_z", "ratio_spread",
-            "checked", "median_abs_residual", "max_abs_residual", "max_model", "note"]
+            "publisher", "rows", "mapped", "in_plane", "ghost_keys", "self_share", "zero_z",
+            "ratio_spread", "checked", "median_abs_residual", "max_abs_residual", "max_model", "note"]
     with open(os.path.join(OUT, "bl_crosscheck_sources.csv"), "w", newline="",
               encoding="utf-8-sig") as f:
         w = csv.writer(f, lineterminator="\n")
@@ -277,30 +284,39 @@ def main():
         for s in summary:
             w.writerow([s["source_id"], s["name"], s["status"], s["snapshot"],
                         s["snapshot_id"], s["anchor_kind"], s["publisher"], s["rows"],
-                        s["mapped"],
+                        s["mapped"], s["in_plane"], "、".join(s["ghost"]),
                         s["self_share"], s["z"], s["spread"], s["checked"], s["med"],
                         s["max"], s["max_model"], s["reason"]])
 
     used = [s for s in summary if s["status"] == "对照"]
     pub = Counter(s["publisher"] for s in used)
+    ghosts = sorted({k for s in used for k in s["ghost"]})
+    ghost_line = ([f"- {len(ghosts)} 个 key 在快照里映射得到、但平面里没有坐标，不参与残差"
+                   f"（就是 `mapped` 比 `in_plane` 多出来的部分）：{'、'.join(ghosts)}", ""]
+                  if ghosts else [])
     lines = ["# BenchmarkList 交叉校验", "",
              "由 `scripts/bl_compare.py` 生成，勿手改。BL **不参与拟合**，只作外部对照：",
              "把 BL 观测到的比值与本项目已解出的 P/X 预测值相比，残差大说明该源与现有证据打架。", "",
              f"- 候选源 {len(summary)} 个，可用 {len(used)} 个，弃用 {len(summary) - len(used)} 个",
              f"- 对照明细 {len(detail)} 条，涉及 {len({d[COL['model_key']] for d in detail})} 个模型", "",
+             *ghost_line,
              "## 发布方集中度", "",
              "同一个发布方的一篇稿子会被 BL 拆成多个 benchmark 源，等于同一批模型被重复计入。", ""]
     for k, v in pub.most_common():
         lines.append(f"- `{k or '未知'}`：{v} 个源")
     lines += ["", "## 逐源", "",
-              "| 源 | 快照 | 锚点 | 发布方 | 模型 | 自报占比 | 零点 z | 比值跨度 | 中位\\|残差\\| | 最大偏离 | 判读 |",
+              "| 源 | 快照 | 锚点 | 发布方 | 模型（有坐标） | 自报占比 | 零点 z | 比值跨度 | 中位\\|残差\\| | 最大偏离 | 判读 |",
               "|---|---|---|---|---|---|---|---|---|---|---|"]
     for s in sorted(used, key=lambda s: -float(s["max"] or 0)):
         sp = float(s["spread"]) if s["spread"] != "" else None
         verdict = "已饱和，无区分度" if (sp is not None and sp < 0.15) else ""
+        if s["ghost"]:
+            verdict = " ".join(x for x in (verdict,
+                          f"另有 {len(s['ghost'])} 个映射无平面坐标不计入：{'、'.join(s['ghost'])}") if x)
+        shown = str(s["in_plane"]) + ("" if s["in_plane"] == s["mapped"] else f"（映射 {s['mapped']}）")
         lines.append(f"| {s['name']} | {s['snapshot']} | "
                      f"{'1017' if s['anchor_kind'] == 'primary' else '链式(副锚)'} | "
-                     f"`{s['publisher']}` | {s['mapped']} | "
+                     f"`{s['publisher']}` | {shown} | "
                      f"{s['self_share']:.0%} | {s['z'] or '—'} | {s['spread']} | {s['med']} | "
                      f"{s['max']} ({s['max_model']}) | {verdict} |")
     bad = [s for s in summary if s["status"] == "弃用"]
@@ -323,13 +339,16 @@ def main():
         # 回填候选清单的实际覆盖：models 列是榜单总模型数，这两个列才是本项目真正用到的
         cand = list(csv.DictReader(open(CAND, encoding="utf-8-sig")))
         fields = list(cand[0].keys())
-        for col in ("mapped_models", "snapshot", "anchor_kind"):
+        for col in ("mapped_models", "plane_models", "snapshot", "anchor_kind"):
             if col not in fields:
                 fields.append(col)
         by_id = {s["source_id"]: s for s in summary}
         for r in cand:
             s = by_id.get(r["id"], {})
             r["mapped_models"] = s.get("mapped", 0) if s else 0
+            # mapped_models 是"榜上映射得到的模型数"（含平面里没有坐标的），
+            # plane_models 才是真正参与对照的数量——两者的差额就是映射白捡的名字
+            r["plane_models"] = s.get("in_plane", 0) if s else 0
             r["snapshot"] = s.get("snapshot", "")
             # 候选表的 anchor 列写的是"这个榜理论上含哪个锚"，
             # 实际选中的快照可能只有副锚（走链式），不回填就会误导。
@@ -340,6 +359,8 @@ def main():
         print(f"-> 已回填 {len(cand)} 行到 sources_bl_candidates.csv")
 
     print(f"候选 {len(summary)} 个 → 可用 {len(used)} 个 / 弃用 {len(summary) - len(used)} 个")
+    if ghosts:
+        print("注意：映射到但平面里没有坐标的 key（不过 ≥5 门槛的计数、也不产出残差）：" + "、".join(ghosts))
     print("发布方集中度：" + "、".join(f"{k or '未知'} {v}" for k, v in pub.most_common()))
     print("残差最大的源：")
     for s in sorted(used, key=lambda s: -float(s["max"] or 0))[:5]:

@@ -132,30 +132,48 @@ def load_shishan():
 
 def load_vals():
     rows = list(csv.DictReader(open(os.path.join(DATA, "vals", "vals_rows.csv"), encoding="utf-8-sig")))
-    agg = {}
+    agg, stat = {}, {}
     for r in rows:
+        st = stat.setdefault(r["slug"], {"rows": 0, "names": set(), "unmapped": set(),
+                                         "nonnum": set(), "keys": set()})
+        st["rows"] += 1
+        st["names"].add(r["model"])
         name = VALS_MAP.get(r["model"])
-        if not name: continue
+        if not name:
+            st["unmapped"].add(r["model"]); continue
         try: acc = float(r["accuracy"])
-        except (TypeError, ValueError): continue
+        except (TypeError, ValueError):
+            st["nonnum"].add(r["model"]); continue
         a = agg.setdefault(r["slug"], {})
         cur = a.get(norm(name))
         if cur is None or acc > cur["value"]:
             a[norm(name)] = {"key": norm(name), "name": name, "raw_name": r["model"],
                              "version": r.get("updated", ""), "date": (r.get("updated") or "")[:10], "value": acc}
-    return {s: list(v.values()) for s, v in agg.items()}
+        st["keys"].add(norm(name))
+    # stat 带上映射失败的名单：只报映射后的模型数，"这张榜本来只有 4 个模型" 和
+    # "榜上 40 个名字我们一个都没映射上" 会打印成同一句话（AA 漂移 11 条就是这么瞎的）
+    return {s: list(v.values()) for s, v in agg.items()}, stat
 
 def load_aa():
     p = os.path.join(DATA, "aa", "aa_rows.csv")
-    if not os.path.exists(p): return {}
-    agg, seen = {}, set()
+    if not os.path.exists(p): return {}, {}
+    agg, seen, stat = {}, set(), {}
     for r in csv.DictReader(open(p, encoding="utf-8-sig")):
         seen.add(r["model_slug"])
+        st = stat.setdefault(r["source_id"], {"rows": 0, "names": set(), "unmapped": set(),
+                                              "nonnum": set(), "keys": set()})
+        st["rows"] += 1
+        st["names"].add(r["model_slug"])
         key = AA_MAP.get(r["model_slug"])
-        if not key: continue
+        if not key:
+            st["unmapped"].add(r["model_slug"]); continue
+        try: val = float(r["score"])
+        except (TypeError, ValueError):
+            st["nonnum"].add(r["model_slug"]); continue
         agg.setdefault(r["source_id"], []).append(
             {"key": key, "name": r["model_name"], "raw_name": r["model_slug"], "version": "aa-2026-10",
-             "date": "2026-10-25", "value": float(r["score"])})
+             "date": "2026-10-25", "value": val})
+        st["keys"].add(key)
     # 映射表漂移自检：这张表是手写的，抓取端的 slug 写法一变就会静默失去整片证据
     # （2026-10-26 实测 20 条里 11 条永不命中，AA 五个源各只剩 9 个模型，跑了很久没人发现）
     dead = sorted(set(AA_MAP) - seen)
@@ -164,9 +182,24 @@ def load_aa():
         print(f"  aa: {len(dead)} 条映射在数据里永不命中（slug 写法漂移？）：{'、'.join(dead)}")
     if unknown:
         print(f"  aa: {len(unknown)} 个 slug 既没映射也不在 AA_UNMAPPED：{'、'.join(unknown)}")
-    return agg
+    return agg, stat
 
 # ---------- 版本筛选 ----------
+def map_note(slug, stat):
+    """映射覆盖的注脚：源表有多少行/多少个名字、其中多少个没映射、多少个折成同键变体。
+    只报映射后的模型数，"这张榜本来只有 4 个模型" 和 "榜上 40 个名字一个都没映射上"
+    会打印成同一句话——AA 漂移 11 条就是这么失明的（2026-10-26）。"""
+    st = stat.get(slug)
+    if not st: return ""
+    un, nn = len(st["unmapped"]), len(st["nonnum"])
+    var = len(st["names"]) - un - nn - len(st["keys"])
+    parts = [f"源表 {st['rows']} 行 / {len(st['names'])} 个名字",
+             (f"{un} 个没映射" if un else "名字全部映射上")]
+    if var > 0: parts.append(f"{var} 个是同键变体")
+    if nn: parts.append(f"{nn} 个分数取不到")
+    return "（" + "，".join(parts) + "）"
+
+
 def usable_versions(rows, label):
     by_ver = {}
     for r in rows: by_ver.setdefault(r["version"], []).append(r)
@@ -320,9 +353,10 @@ def main():
     logic_rows = load_logic()
     code_rows = load_code_v3()
     shi_rows, x2map = load_shishan()
-    vals = load_vals()
-    vals.update(load_aa())
-
+    vals, vstat = load_vals()
+    aa, aastat = load_aa()
+    vals.update(aa)
+    vstat.update(aastat)
     print("版本检查：")
     logic_ok = usable_versions(logic_rows, "logic")
     code_ok = usable_versions(code_rows, "code_v3")
@@ -345,6 +379,7 @@ def main():
     for slug, rows in vals.items():
         if slug not in SOURCES: continue
         n = len(rows)
+        note = map_note(slug, vstat)
         has_pri = any(r["key"] == ANCHOR_KEY for r in rows)
         has_sec = any(r["key"] == SECONDARY_KEY for r in rows)
         # 模型数下限与 usable_versions / 屎山分支一致：含锚点但只有个位数模型的
@@ -352,13 +387,16 @@ def main():
         # 一个没有信息量的点上。此前只有 1~4 个模型的尾巴源能悄悄影响基准坐标。
         if has_pri and n >= MIN_MODELS_PER_VERSION:
             vals_ok[slug] = rows
-            print(f"  {slug}: {n} 个模型，含基准 OK")
+            print(f"  {slug}: {n} 个模型{note}，含基准 OK")
         elif has_sec and n >= MIN_MODELS_PER_VERSION:
             vals_chained[slug] = rows
-            print(f"  {slug}: {n} 个模型，含副锚点 DeepSeek V4.1 Flash -> 链式换算")
+            print(f"  {slug}: {n} 个模型{note}，含副锚点 DeepSeek V4.1 Flash -> 链式换算")
         else:
             why = f"仅 {n} 个模型" if (has_pri or has_sec) else "无可用锚点"
-            print(f"  {slug}: {n} 个模型，{why}，丢弃")
+            un = len(vstat[slug]["unmapped"]) if slug in vstat and vstat[slug]["unmapped"] else 0
+            hint = (f"；{un} 个名字没映射上，先查映射表再断定这榜是不是真的没有锚点"
+                    if (not (has_pri or has_sec)) and un else "")
+            print(f"  {slug}: {n} 个模型{note}，{why}，丢弃{hint}")
 
     # 每个模型只取最新可用版本
     def latest(by_ver):
@@ -417,6 +455,7 @@ def main():
         chained["shishan"] = [r for rs in shi_chained.values() for r in rs]
     dropped = {}
     near = []
+    chain_info = {}
     for slug, rows in chained.items():
         if "P" not in sec or "X" not in sec: continue
         a = SOURCES[slug]["alpha"]
@@ -444,6 +483,9 @@ def main():
             near.append(slug)
             print(f"  {slug}: 等效基准 {scale:.2f} 接近该榜满分 {ceiling:g}，比值放大有风险")
         print(f"  {slug}: 副锚点原始 {ref['value']:.2f} / 混合相对 {r_anchor:.4f} -> 等效基准 {scale:.2f}")
+        chain_info[slug] = {"alpha": a, "r_anchor": round(r_anchor, 4),
+                            "sec_raw": round(ref["value"], 2), "equiv": round(scale, 2),
+                            "ceiling": ceiling, "near": slug in near}
         for r in rows:
             if r["key"] == SECONDARY_KEY: continue
             per_source.setdefault(slug, {})[r["key"]] = r
@@ -452,7 +494,7 @@ def main():
     # 零点参照：该榜上 MiniMax-M3 相对基准的位置 z，用来把比值重标定成 0..1..
     #   r′ = (r − z) / (1 − z)   → 1017 仍是 1.0，MiniMax-M3 变成 0
     # z 越接近 1 说明这块榜分不出基准与弱模，放大系数 1/(1−z) 也越大 → 同时按 ZERO_OK_MAX 降权。
-    zero_of, zero_pen, zero_skip = {}, {}, set()
+    zero_of, zero_pen, zero_skip, zero_skip_z = {}, {}, set(), {}
     for s, rows in per_source.items():
         for ver in {r["version"] for r in rows.values()}:
             a = anchor_of.get((s, ver))
@@ -464,6 +506,7 @@ def main():
                 zero_of[(s, ver)] = z      # 修正后量程仍可接受
             else:
                 zero_skip.add(s)           # 只降权，不放大
+                zero_skip_z[s] = z         # 但 z 本身要留在产物里，文档才不是手抄的
     print("零点参照（MiniMax-M3）：")
     for s in sorted({k[0] for k in zero_of}):
         z = [v for (ss, _), v in zero_of.items() if ss == s][0]
@@ -475,11 +518,15 @@ def main():
         "sec": {k: round(v, 4) for k, v in sec.items()},
         "dropped": {k: round(v, 2) for k, v in dropped.items()},
         "near_ceiling": near,
+        # 链式换算的每个榜都写进产物：METHOD §6 的表和 README 的 near_ceiling 数字
+        # 都要能由产物生成，手抄一遍就会漂移
+        "chained": {k: v for k, v in sorted(chain_info.items())},
         "zero_ref": ZERO_KEY,
         "zero_z": {s: round(z, 4) for s, z in
                    sorted({k[0]: v for k, v in zero_of.items()}.items())},
         "zero_penalty": {s: round(v, 3) for s, v in sorted(zero_pen.items())},
         "zero_skip": sorted(zero_skip),
+        "zero_skip_z": {s: round(z, 4) for s, z in sorted(zero_skip_z.items())},
         "thresholds": {"M0": 1.25, "M1": 1.00, "M2": 0.70},
     }
     with open(os.path.join(OUT, "metrics.json"), "w", encoding="utf-8") as mf:
@@ -555,14 +602,18 @@ def main():
     for k, fit in fits.items():
         p, x = fit["p"], fit["x"]
         ps = fit["ps"]
-        top = max(p, x)
+        # 档位按**发布出来的三位小数坐标**判定。基准模型 P/X 按构造等于 1.0，但浮点解可能给
+        # 0.99999999；直接拿原始值比阈值会让 1017 自己在 CSV 里显示成 "1.0 / M2"，
+        # 读者无法核对，而且权重第 5 位小数的抖动就能翻档。
+        P3, X3 = round(p, 3), round(x, 3)
+        top = max(P3, X3)
         tier = "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
         # 距下一档还差多少：档位带宽 0.25，差值只有 0.01 量级就说明是临界点
         nxt = {"M0": None, "M1": 1.25, "M2": 1.00, "M3": 0.70}[tier]
         gap = "" if nxt is None else round(max(0.0, nxt - top), 3)
-        tag = ("P+" if p >= 1.25 else "") + ("X+" if x >= 1.25 else "") + ("0锚" if k == ZERO_KEY else "")
+        tag = ("P+" if P3 >= 1.25 else "") + ("X+" if X3 >= 1.25 else "") + ("0锚" if k == ZERO_KEY else "")
         rmap = {s: r for w, r, s, _f in ps}
-        row = [names[k], k, round(p, 3), round(x, 3), tier, tag, "",
+        row = [names[k], k, P3, X3, tier, tag, "",
                round(fit["pcov"], 3), round(fit["xcov"], 3), round(fit["rmse"], 3), gap,
                f"{fit['lo']:.2f}~{fit['hi']:.2f}", fit["clamp"], fit["dw"],
                "+".join(s for _, _, s, _f in ps),

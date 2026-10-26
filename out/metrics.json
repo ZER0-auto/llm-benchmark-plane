@@ -1,10 +1,10 @@
 {
  "sec": {
-  "P": 0.9171,
+  "P": 0.917,
   "X": 0.7567
  },
  "dropped": {
-  "medscribe": 103.16,
+  "medscribe": 103.15,
   "srebench": 0.94,
   "terminal-bench-science": 0.0
  },
@@ -12,10 +12,108 @@
   "legal_bench",
   "shishan"
  ],
+ "chained": {
+  "biomysterybench": {
+   "alpha": 0.65,
+   "r_anchor": 0.8609,
+   "sec_raw": 67.78,
+   "equiv": 78.73,
+   "ceiling": 100.0,
+   "near": false
+  },
+  "cyber": {
+   "alpha": 0.4,
+   "r_anchor": 0.8209,
+   "sec_raw": 73.69,
+   "equiv": 89.77,
+   "ceiling": 100.0,
+   "near": false
+  },
+  "ioi": {
+   "alpha": 0.6,
+   "r_anchor": 0.8529,
+   "sec_raw": 40.28,
+   "equiv": 47.22,
+   "ceiling": 100.0,
+   "near": false
+  },
+  "legal_bench": {
+   "alpha": 0.85,
+   "r_anchor": 0.893,
+   "sec_raw": 83.28,
+   "equiv": 93.26,
+   "ceiling": 100.0,
+   "near": true
+  },
+  "medcode": {
+   "alpha": 0.55,
+   "r_anchor": 0.8449,
+   "sec_raw": 41.17,
+   "equiv": 48.73,
+   "ceiling": 100.0,
+   "near": false
+  },
+  "mysterymechanism": {
+   "alpha": 0.85,
+   "r_anchor": 0.893,
+   "sec_raw": 21.17,
+   "equiv": 23.71,
+   "ceiling": 100.0,
+   "near": false
+  },
+  "proof_bench": {
+   "alpha": 0.9,
+   "r_anchor": 0.901,
+   "sec_raw": 54.0,
+   "equiv": 59.93,
+   "ceiling": 100.0,
+   "near": false
+  },
+  "public-benefits-bench": {
+   "alpha": 0.5,
+   "r_anchor": 0.8369,
+   "sec_raw": 64.28,
+   "equiv": 76.8,
+   "ceiling": 100.0,
+   "near": false
+  },
+  "sage": {
+   "alpha": 0.9,
+   "r_anchor": 0.901,
+   "sec_raw": 47.88,
+   "equiv": 53.14,
+   "ceiling": 100.0,
+   "near": false
+  },
+  "shishan": {
+   "alpha": 0.5,
+   "r_anchor": 0.8369,
+   "sec_raw": 78.93,
+   "equiv": 94.32,
+   "ceiling": 100.0,
+   "near": true
+  },
+  "skillsbench": {
+   "alpha": 0.4,
+   "r_anchor": 0.8209,
+   "sec_raw": 69.8,
+   "equiv": 85.04,
+   "ceiling": 100.0,
+   "near": false
+  },
+  "swebench-multimodal": {
+   "alpha": 0.35,
+   "r_anchor": 0.8128,
+   "sec_raw": 46.46,
+   "equiv": 57.16,
+   "ceiling": 100.0,
+   "near": false
+  }
+ },
  "zero_ref": "minimaxm3",
  "zero_z": {
   "code-migration-v1-1": 0.3095,
-  "cyber": 0.724,
+  "cyber": 0.7241,
   "legal_research": 0.6596,
   "logic": 0.4258,
   "proof_bench": 0.3003,
@@ -51,6 +149,14 @@
   "public-benefits-bench",
   "sage"
  ],
+ "zero_skip_z": {
+  "emb-v1-1": 0.8638,
+  "fabv2-1": 0.8634,
+  "legal_bench": 0.9159,
+  "medcode": 0.9499,
+  "public-benefits-bench": 0.8351,
+  "sage": 0.9517
+ },
  "thresholds": {
   "M0": 1.25,
   "M1": 1.0,

@@ -1,31 +1,31 @@
-﻿id,name,axis,status,public,mode,industry,anchor,weight_prior,alpha_p,grade,models,updated,url,note,weight_cal,mapped_models,snapshot,anchor_kind
-gpqa_diamond_epoch,GPQA Diamond,P,candidate,public,one-shot,science,1017,0.02,0.90,A-,478,2026-10,https://benchmarklist.com/benchmarks/gpqa_diamond_epoch/,BL 源；研究生级科学问答判结论；全场最大榜单之一,,6,2026-10-23,primary
-mmmu_pro,MMMU-Pro,P,candidate,public,one-shot,multimodal,1017,0.02,0.85,A-,74,2026-10,https://benchmarklist.com/benchmarks/mmmu_pro/,BL 源；专家级多模态理解判答案；多模态域首个源,,5,2026-10-23,primary
-agents_last_exam,Agents' Last Exam,X,candidate,public,agentic,agentic,1017,0.03,0.45,A-,43,2026-10,https://benchmarklist.com/benchmarks/agents_last_exam/,BL 源；OS 沙箱长时程任务判交付物,,6,2026-10-17,primary
-deepswe_1_1,DeepSWE 1.1,X,candidate,private,agentic,coding,1017,0.03,0.45,B+,61,2026-10,https://benchmarklist.com/benchmarks/deepswe_1_1/,BL 源；mini-SWE-agent harness（xAI 发布帖引用）1017 该榜榜首之一,,6,2026-10-23,primary
-nl2repo,NL2Repo,X,candidate,private,agentic,coding,1017,0.03,0.45,A-,36,2026-10,https://benchmarklist.com/benchmarks/nl2repo/,BL 源；仓库级代码生成,,7,2026-10-19,primary
-swe_marathon,SWE-Marathon,X,candidate,private,agentic,coding,1017,0.02,0.45,B+,37,2026-10,https://benchmarklist.com/benchmarks/swe_marathon/,BL 源；长时程 coding,,6,2026-10-23,primary
-programbench,ProgramBench,X,candidate,public,agentic,coding,1017,0.02,0.40,B,42,2026-10,https://benchmarklist.com/benchmarks/programbench/,BL 源；二进制重建程序；vals 旧版因量程 0-18.5 过窄被 excluded 本版量程到 85 需重测守卫,,6,2026-10-23,primary
-officeqa_pro,OfficeQA Pro,X,candidate,private,agentic,office,1017,0.02,0.45,B+,20,2026-10,https://benchmarklist.com/benchmarks/officeqa_pro/,BL 源；文档 AI 新域,,5,2026-10-23,primary
-hle_tools,HLE w/ tools,P,candidate,public,one-shot,science,1017,0.01,0.90,A-,37,2026-10,https://benchmarklist.com/benchmarks/hle_tools/,BL 源；HLE 工具变体（Qwen 报告）；与 aa_hle 同族 重复计分规则待定,,6,2026-10-23,primary
-hle_text_only,HLE Text Only,P,candidate,public,one-shot,science,1017,0.01,0.90,A-,79,2026-10,https://benchmarklist.com/benchmarks/hle_text_only/,BL 源；HLE 纯文本变体；1017 该榜榜首,,0,,
-babyvision,BabyVision,P,candidate,public,one-shot,vision,1017,0.02,0.80,B+,50,2026-10,https://benchmarklist.com/benchmarks/babyvision/,BL 源；早期视觉推理；多模态新域,,5,2026-10-23,primary
-zerobench,ZEROBench,P,candidate,public,one-shot,vision,1017,0.02,0.75,B+,65,2026-10,https://benchmarklist.com/benchmarks/zerobench/,BL 源；零样本视觉谜题,,5,2026-10-23,primary
-charxiv_r,CharXiv-R,P,candidate,public,one-shot,vision,1017,0.02,0.80,B,45,2026-10,https://benchmarklist.com/benchmarks/charxiv_r/,BL 源；科学图表推理,,5,2026-10-23,primary
-chartography,Chartography,P,candidate,public,one-shot,vision,1017,0.02,0.80,B,44,2026-10,https://benchmarklist.com/benchmarks/chartography/,BL 源；专业图表理解（Surge AI）,,5,2026-10-23,primary
-benchcad_vision2code_1000,BenchCAD Vision2Code-1000,X,candidate,public,agentic,vision,1017,0.01,0.45,B,13,2026-10,https://benchmarklist.com/benchmarks/benchcad_vision2code_1000/,BL 源；视觉到 CAD 代码判产物,,5,2026-10-23,primary
-perceptionbench,PerceptionBench,P,candidate,public,one-shot,vision,1017,0.01,0.75,B,21,2026-10,https://benchmarklist.com/benchmarks/perceptionbench/,BL 源；视觉感知,,5,2026-10-23,primary
-cwe_bench_v1,CWE-bench v1,X,candidate,public,agentic,security,v41,0.02,0.40,A-,11,2026-10,https://benchmarklist.com/benchmarks/cwe_bench_v1/,BL 源；120 个审计-修补任务；补 cyber 缺口（原 cyber 等效基准超满分被守卫剔除）,,9,2026-10-05,secondary
-cybergym,CyberGym,X,candidate,public,agentic,security,v41,0.02,0.40,A-,44,2026-10,https://benchmarklist.com/benchmarks/cybergym/,BL 源；漏洞识别与修复；次新锚该榜第一,,5,2026-09-30,secondary
-terminal_bench_science,Terminal-Bench-Science,X,candidate,public,agentic,science,v41,0.02,0.45,A-,18,2026-10,https://benchmarklist.com/benchmarks/terminal_bench_science/,BL 源；vals 旧版副锚 0 分被剔除 本版次新锚 15.7% 非零 需重测守卫,,6,2026-10-23,secondary
-matharena_apex,MathArena Apex,P,candidate,public,one-shot,math,v41,0.02,0.85,A-,49,2026-10,https://benchmarklist.com/benchmarks/matharena_apex/,BL 源；竞赛级数学；补数学域空白,,0,,
-arxivmath,ArxivMath,P,candidate,private,one-shot,math,v41,0.01,0.85,B+,25,2026-10,https://benchmarklist.com/benchmarks/arxivmath/,BL 源；研究级数学（Anthropic 系统卡报告）,,16,2026-10-03,secondary
-browsecomp,BrowseComp,X,candidate,public,agentic,web,v41,0.02,0.45,A-,69,2026-10,https://benchmarklist.com/benchmarks/browsecomp/,BL 源；多步浏览任务；补 web 域空白,,26,2026-10-03,secondary
-multichallenge,MultiChallenge,P,candidate,public,one-shot,general,v41,0.02,0.80,A-,44,2026-10,https://benchmarklist.com/benchmarks/multichallenge/,BL 源；多轮对话指令保持/推理记忆,,7,2026-09-30,secondary
-jobbench,JobBench,X,candidate,public,agentic,enterprise,v41,0.02,0.45,A-,57,2026-10,https://benchmarklist.com/benchmarks/jobbench/,BL 源；130 任务覆盖 35 职业,,6,2026-09-22,secondary
-bankertoolbench,BankerToolBench,X,candidate,private,agentic,finance,v41,0.01,0.45,B+,10,2026-10,https://benchmarklist.com/benchmarks/bankertoolbench/,BL 源；投行工作流；加深金融域,,6,2026-10-19,secondary
-draco,DRACO,X,candidate,private,agentic,research,v41,0.01,0.45,B+,24,2026-10,https://benchmarklist.com/benchmarks/draco/,BL 源；深度研究 agent（Perplexity DRACO Anthropic 系统卡报告）,,7,2026-09-30,secondary
-posttrainbench,PostTrainBench,X,candidate,public,agentic,coding,v41,0.01,0.45,B,34,2026-10,https://benchmarklist.com/benchmarks/posttrainbench/,BL 源；CLI agent 自主后训练小模型,,6,2026-10-19,secondary
-sweatlas_codebase_qna,SWE Atlas Codebase QnA,P,candidate,public,one-shot,coding,v41,0.01,0.75,B,59,2026-10,https://benchmarklist.com/benchmarks/sweatlas_codebase_qna/,BL 源；代码库理解问答,,7,2026-09-30,secondary
-terminal_bench_3,Terminal-Bench 3.0,X,candidate,public,agentic,coding,v41,0.01,0.45,B+,20,2026-10,https://benchmarklist.com/benchmarks/terminal_bench_3/,BL 源；TB 家族版本；与 terminal-bench-4 同族 重复计分规则待定,,7,2026-09-10,secondary
-chartqa_pro,ChartQAPro,P,candidate,public,one-shot,vision,v41,0.01,0.80,B,10,2026-10,https://benchmarklist.com/benchmarks/chartqapro/,BL 源；专业图表 VQA,,5,2026-10-06,secondary
+﻿id,name,axis,status,public,mode,industry,anchor,weight_prior,alpha_p,grade,models,updated,url,note,weight_cal,mapped_models,snapshot,anchor_kind,plane_models
+gpqa_diamond_epoch,GPQA Diamond,P,candidate,public,one-shot,science,1017,0.02,0.90,A-,478,2026-10,https://benchmarklist.com/benchmarks/gpqa_diamond_epoch/,BL 源；研究生级科学问答判结论；全场最大榜单之一,,6,2026-10-23,primary,6
+mmmu_pro,MMMU-Pro,P,candidate,public,one-shot,multimodal,1017,0.02,0.85,A-,74,2026-10,https://benchmarklist.com/benchmarks/mmmu_pro/,BL 源；专家级多模态理解判答案；多模态域首个源,,5,2026-10-23,primary,5
+agents_last_exam,Agents' Last Exam,X,candidate,public,agentic,agentic,1017,0.03,0.45,A-,43,2026-10,https://benchmarklist.com/benchmarks/agents_last_exam/,BL 源；OS 沙箱长时程任务判交付物,,6,2026-10-17,primary,6
+deepswe_1_1,DeepSWE 1.1,X,candidate,private,agentic,coding,1017,0.03,0.45,B+,61,2026-10,https://benchmarklist.com/benchmarks/deepswe_1_1/,BL 源；mini-SWE-agent harness（xAI 发布帖引用）1017 该榜榜首之一,,6,2026-10-23,primary,6
+nl2repo,NL2Repo,X,candidate,private,agentic,coding,1017,0.03,0.45,A-,36,2026-10,https://benchmarklist.com/benchmarks/nl2repo/,BL 源；仓库级代码生成,,7,2026-10-19,primary,7
+swe_marathon,SWE-Marathon,X,candidate,private,agentic,coding,1017,0.02,0.45,B+,37,2026-10,https://benchmarklist.com/benchmarks/swe_marathon/,BL 源；长时程 coding,,6,2026-10-23,primary,6
+programbench,ProgramBench,X,candidate,public,agentic,coding,1017,0.02,0.40,B,42,2026-10,https://benchmarklist.com/benchmarks/programbench/,BL 源；二进制重建程序；vals 旧版因量程 0-18.5 过窄被 excluded 本版量程到 85 需重测守卫,,6,2026-10-23,primary,6
+officeqa_pro,OfficeQA Pro,X,candidate,private,agentic,office,1017,0.02,0.45,B+,20,2026-10,https://benchmarklist.com/benchmarks/officeqa_pro/,BL 源；文档 AI 新域,,5,2026-10-23,primary,5
+hle_tools,HLE w/ tools,P,candidate,public,one-shot,science,1017,0.01,0.90,A-,37,2026-10,https://benchmarklist.com/benchmarks/hle_tools/,BL 源；HLE 工具变体（Qwen 报告）；与 aa_hle 同族 重复计分规则待定,,6,2026-10-23,primary,6
+hle_text_only,HLE Text Only,P,candidate,public,one-shot,science,1017,0.01,0.90,A-,79,2026-10,https://benchmarklist.com/benchmarks/hle_text_only/,BL 源；HLE 纯文本变体；1017 该榜榜首,,0,,,0
+babyvision,BabyVision,P,candidate,public,one-shot,vision,1017,0.02,0.80,B+,50,2026-10,https://benchmarklist.com/benchmarks/babyvision/,BL 源；早期视觉推理；多模态新域,,5,2026-10-23,primary,5
+zerobench,ZEROBench,P,candidate,public,one-shot,vision,1017,0.02,0.75,B+,65,2026-10,https://benchmarklist.com/benchmarks/zerobench/,BL 源；零样本视觉谜题,,5,2026-10-23,primary,5
+charxiv_r,CharXiv-R,P,candidate,public,one-shot,vision,1017,0.02,0.80,B,45,2026-10,https://benchmarklist.com/benchmarks/charxiv_r/,BL 源；科学图表推理,,5,2026-10-23,primary,5
+chartography,Chartography,P,candidate,public,one-shot,vision,1017,0.02,0.80,B,44,2026-10,https://benchmarklist.com/benchmarks/chartography/,BL 源；专业图表理解（Surge AI）,,5,2026-10-23,primary,5
+benchcad_vision2code_1000,BenchCAD Vision2Code-1000,X,candidate,public,agentic,vision,1017,0.01,0.45,B,13,2026-10,https://benchmarklist.com/benchmarks/benchcad_vision2code_1000/,BL 源；视觉到 CAD 代码判产物,,5,2026-10-23,primary,5
+perceptionbench,PerceptionBench,P,candidate,public,one-shot,vision,1017,0.01,0.75,B,21,2026-10,https://benchmarklist.com/benchmarks/perceptionbench/,BL 源；视觉感知,,5,2026-10-23,primary,5
+cwe_bench_v1,CWE-bench v1,X,candidate,public,agentic,security,v41,0.02,0.40,A-,11,2026-10,https://benchmarklist.com/benchmarks/cwe_bench_v1/,BL 源；120 个审计-修补任务；补 cyber 缺口（原 cyber 等效基准超满分被守卫剔除）,,9,2026-10-05,secondary,9
+cybergym,CyberGym,X,candidate,public,agentic,security,v41,0.02,0.40,A-,44,2026-10,https://benchmarklist.com/benchmarks/cybergym/,BL 源；漏洞识别与修复；次新锚该榜第一,,5,2026-09-30,secondary,5
+terminal_bench_science,Terminal-Bench-Science,X,candidate,public,agentic,science,v41,0.02,0.45,A-,18,2026-10,https://benchmarklist.com/benchmarks/terminal_bench_science/,BL 源；vals 旧版副锚 0 分被剔除 本版次新锚 15.7% 非零 需重测守卫,,6,2026-10-23,secondary,6
+matharena_apex,MathArena Apex,P,candidate,public,one-shot,math,v41,0.02,0.85,A-,49,2026-10,https://benchmarklist.com/benchmarks/matharena_apex/,BL 源；竞赛级数学；补数学域空白,,0,,,0
+arxivmath,ArxivMath,P,candidate,private,one-shot,math,v41,0.01,0.85,B+,25,2026-10,https://benchmarklist.com/benchmarks/arxivmath/,BL 源；研究级数学（Anthropic 系统卡报告）,,16,2026-10-03,secondary,15
+browsecomp,BrowseComp,X,candidate,public,agentic,web,v41,0.02,0.45,A-,69,2026-10,https://benchmarklist.com/benchmarks/browsecomp/,BL 源；多步浏览任务；补 web 域空白,,26,2026-10-03,secondary,26
+multichallenge,MultiChallenge,P,candidate,public,one-shot,general,v41,0.02,0.80,A-,44,2026-10,https://benchmarklist.com/benchmarks/multichallenge/,BL 源；多轮对话指令保持/推理记忆,,7,2026-09-30,secondary,7
+jobbench,JobBench,X,candidate,public,agentic,enterprise,v41,0.02,0.45,A-,57,2026-10,https://benchmarklist.com/benchmarks/jobbench/,BL 源；130 任务覆盖 35 职业,,6,2026-09-22,secondary,6
+bankertoolbench,BankerToolBench,X,candidate,private,agentic,finance,v41,0.01,0.45,B+,10,2026-10,https://benchmarklist.com/benchmarks/bankertoolbench/,BL 源；投行工作流；加深金融域,,6,2026-10-19,secondary,6
+draco,DRACO,X,candidate,private,agentic,research,v41,0.01,0.45,B+,24,2026-10,https://benchmarklist.com/benchmarks/draco/,BL 源；深度研究 agent（Perplexity DRACO Anthropic 系统卡报告）,,7,2026-09-30,secondary,7
+posttrainbench,PostTrainBench,X,candidate,public,agentic,coding,v41,0.01,0.45,B,34,2026-10,https://benchmarklist.com/benchmarks/posttrainbench/,BL 源；CLI agent 自主后训练小模型,,6,2026-10-19,secondary,6
+sweatlas_codebase_qna,SWE Atlas Codebase QnA,P,candidate,public,one-shot,coding,v41,0.01,0.75,B,59,2026-10,https://benchmarklist.com/benchmarks/sweatlas_codebase_qna/,BL 源；代码库理解问答,,7,2026-09-30,secondary,7
+terminal_bench_3,Terminal-Bench 3.0,X,candidate,public,agentic,coding,v41,0.01,0.45,B+,20,2026-10,https://benchmarklist.com/benchmarks/terminal_bench_3/,BL 源；TB 家族版本；与 terminal-bench-4 同族 重复计分规则待定,,7,2026-09-10,secondary,7
+chartqa_pro,ChartQAPro,P,candidate,public,one-shot,vision,v41,0.01,0.80,B,10,2026-10,https://benchmarklist.com/benchmarks/chartqapro/,BL 源；专业图表 VQA,,5,2026-10-06,secondary,5

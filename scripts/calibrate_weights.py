@@ -6,6 +6,10 @@
 可信度先验（级别 × 覆盖 × 新鲜度）除以该误差，作为权重的下一轮猜测。
 
 用法：先跑 pipeline.py，再跑本脚本，然后重跑 pipeline.py（它会优先用 weight_cal）。
+
+注意：本脚本读的证据比值本身依赖 weight_cal（链式榜的等效基准由带权的 P_sec/X_sec 折算，§6），
+所以单独跑一次留下的是**一步之差**的不自洽基线。要自洽请用
+`python scripts/settle_weights.py`（交替跑 calibrate → pipeline 直到权重不再变化）。
 """
 import csv, io, json, math, os
 from datetime import date
@@ -244,6 +248,8 @@ def main():
                                              if meta[s]["public"] == "public") / total, 4),
                    "tier_changed_vs_prior": tier_changed,
                    "perturb_flips_mean": round(sum(flips) / len(flips), 2),
+                   "perturb_flips_min": min(flips), "perturb_flips_max": max(flips),
+                   "perturb_runs": len(flips), "perturb_rel": 0.20,
                    "lam": LAM, "eps": EPS, "public_cap": PUBLIC_CAP,
                    "single_cap": SINGLE_CAP}, f, ensure_ascii=False, indent=1)
 

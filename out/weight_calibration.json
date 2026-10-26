@@ -2,21 +2,21 @@
  "iterations": [
   {
    "iter": 1,
-   "max_dw": 0.2509,
-   "spearman": 0.98177,
-   "shift": 0.16324
+   "max_dw": 0.2513,
+   "spearman": 0.98172,
+   "shift": 0.16337
   },
   {
    "iter": 2,
-   "max_dw": 0.0361,
+   "max_dw": 0.0363,
    "spearman": 0.99956,
-   "shift": 0.0131
+   "shift": 0.01308
   },
   {
    "iter": 3,
-   "max_dw": 0.0066,
+   "max_dw": 0.0065,
    "spearman": 0.99994,
-   "shift": 0.00162
+   "shift": 0.0016
   },
   {
    "iter": 4,
@@ -38,7 +38,11 @@
   "qwen3.8max0902",
   "step5preview"
  ],
- "perturb_flips_mean": 0.65,
+ "perturb_flips_mean": 0.7,
+ "perturb_flips_min": 0,
+ "perturb_flips_max": 2,
+ "perturb_runs": 20,
+ "perturb_rel": 0.2,
  "lam": 0.03,
  "eps": 0.05,
  "public_cap": 0.2,
