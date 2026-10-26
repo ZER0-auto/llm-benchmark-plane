@@ -8,6 +8,7 @@ data/ 与 out/ 下的原始数据快照来自第三方 benchmark，版权归各�
 - 致知：https://llm2014.github.io/llm_benchmark/
 - 屎山挑战赛：https://shishan.hellomeng.com/
 - Vals AI：https://www.vals.ai/benchmarks
+- Artificial Analysis：https://artificialanalysis.ai/（只取分项 HLE / AA-LCR / CritPT / SciCode / AutomationBench）
 - BenchmarkList：https://benchmarklist.com/（只做交叉校验，不进计分；逐条成绩的原始出处多为各厂商发布稿，
   版权归各发布方）
 
