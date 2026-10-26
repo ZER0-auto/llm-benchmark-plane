@@ -197,6 +197,27 @@ def main():
     nsat = sum(1 for s in used if s["ratio_spread"] and float(s["ratio_spread"]) < 0.15)
     need("§4.1 饱和源数", mt, f"{len(used)} 个可用源里 {nsat} 个的观测比值跨度 < 0.15", "METHOD")
 
+    # ---------- 源级 bootstrap（METHOD §17 / README） ----------
+    bt = met.get("bootstrap")
+    if bt:
+        need("§17 bootstrap 汇总", mt,
+             f"本轮（{bt['runs']} 次、seed={bt['seed']}、{bt['sources']} 个源）：{bt['models']} 个模型全部算出区间；"
+             f"区间宽度中位 P {bt['width_med_p']} / X {bt['width_med_x']}；档位稳定率中位 {bt['stability_med']}；"
+             f"稳定率 <0.5 的 {len(bt['unstable'])} 个（{'、'.join(bt['unstable'])}）；"
+             f"多数派档位与标出档位不同的 {len(bt['modal_differs'])} 个（{'、'.join(bt['modal_differs'])}）。", "METHOD")
+        for k in bt["modal_differs"]:
+            r = next(x for x in plane if x["model_key"] == k)
+            need(f"§17 {k} 的多数派", mt, f"{r['model_id']} 标 {r['tier']}、多数派 {r['tier_mode']}", "METHOD")
+        a = next(r for r in plane if r["model_key"] == "deepseekv4.1flash1017")
+        need("§17 锚点自检（区间应为 0 宽）", mt, f"基准模型 1017 的区间是 {a['P_lo']}~{a['P_hi']}", "METHOD")
+        need("README 口径摘要 bootstrap", rd,
+             f"源级 bootstrap（{bt['sources']} 个计分源有放回抽 {bt['runs']} 次，seed={bt['seed']}）给出 "
+             f"P_lo / P_hi / X_lo / X_hi（{bt['interval']}）与 tier_stability；区间宽度中位 "
+             f"P {bt['width_med_p']} / X {bt['width_med_x']} 比一档带宽（0.25）还宽", "README")
+        worst = min([r for r in plane if r["tier_stability"]], key=lambda r: float(r["tier_stability"]))
+        need("README 最不稳模型", rd,
+             f"全场最低的 {worst['model_id']} 是 {worst['tier_stability']}（多数派 {worst['tier_mode']}）", "README")
+
     bad = [c for c in checks if not c[0]]
     for ok, label, want, got in checks:
         if not ok:

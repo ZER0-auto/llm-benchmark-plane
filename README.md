@@ -35,6 +35,7 @@ python scripts/fetch_aa.py         # Artificial Analysis 分项
 
 # 2) 归一化 + 定档
 python scripts/pipeline.py         # -> out/model_evidence.csv, out/model_plane.csv
+python scripts/pipeline.py --bootstrap 1000   # 同上，再加源级 bootstrap：坐标区间 + 档位稳定率（约 10s）
 
 # 2b) 可选：按留一残差校准权重（结果写回 sources.csv 的 weight_cal）
 python scripts/settle_weights.py      # 推荐：交替跑 calibrate + pipeline 到权重不动点
@@ -94,6 +95,7 @@ scripts/
 out/
   model_evidence.csv   逐源证据：model_key（规范键）、model_id（展示名）、source_model（源站原名）、版本、日期、原始分、基准分、比值
   model_plane.csv      最终平面：model_key、P / X、档位、标签、来源、P / X 覆盖度、fit_rmse、next_tier_gap、ratio_range、clamped、downweighted
+                       跑 --bootstrap 时再多 6 列：P_lo / P_hi / X_lo / X_hi（5~95%）、tier_stability、tier_mode
   model_plane.html     交互图
   metrics.json         本次运行的链式基准（每个链式榜的 α / r_anchor / 等效基准）、守卫剔除、零点 z 与标注；注入图表脚注，也是 check_docs.py 的对账基准
   weight_calibration.csv/.json  权重校准明细、收敛过程与扰动验证
@@ -105,6 +107,7 @@ out/
 - **不硬切轴**：每个来源带一个 P 成分 α，同一个比值按 `r ≈ α·P + (1−α)·X` 同时进入两轴，用岭回归（λ=0.03）解出每个模型的 P 与 X
 - **两个参照点**：1.0 = DeepSeek V4.1 Flash 1017，0.0 = MiniMax-M3。10 个源做两点归一；零点过高（z>0.75）的 6 个源只降权不修正；没有 MiniMax-M3 的 11 个源保持单点比值，且不参与决定坐标边界
 - **坐标不外推**：P、X 被限制在该模型观测比值的 p10~p90 区间内（无约束解会造出榜上没出现的分数），本轮钳位 21 个点（见 `model_plane.csv` 的 `clamped`）；每个模型另有加权拟合 RMSE 可查
+- **坐标带区间**：源级 bootstrap（27 个计分源有放回抽 1000 次，seed=20261026）给出 P_lo / P_hi / X_lo / X_hi（5-95%）与 tier_stability；区间宽度中位 P 0.453 / X 0.539 比一档带宽（0.25）还宽，所以档位要连着稳定率一起读（METHOD §17）
 - **权重与 α**：全部登记在 [sources.csv](sources.csv)，管道直接读表；权重按留一残差校准（`scripts/calibrate_weights.py`），初猜与校准值并排存着，公开源占比按上限 0.20 配平（本轮 0.20）
 - **Artificial Analysis** 只取分项（HLE / LCR / CritPT / SciCode / AutomationBench），不用它的综合指数
 - **版本规则**：致知按月切版本，版本内必须含基准模型，否则整版丢弃；屎山是阶梯加题，整块算一个版本，锚点为 V4.1 Flash
@@ -143,5 +146,6 @@ out/
 9. **覆盖度仍不均**：平均覆盖 P 0.50 / X 0.48；已定策：不设剔除门槛，低覆盖点在图上标为虚线白心环并在 tooltip 里给出两轴覆盖度。
 10. **有些模型跨榜剖面不一致**（观测比值跨度大、拟合 RMSE 高），双因子模型只能折中；这类点的两轴距离比单榜距离粗，看 tooltip 的 RMSE 判断可信度。
 11. **零点只在 16 个源上成立**：其中 10 个做两点归一、6 个 z>0.75 只降权；其余 11 个源仍是单点归一（零点=原始 0），与修正过的源混在同一套坐标里是主要的近似来源；已用“不让它们决定边界 + 按 z 降权”压住，但没消除。
-12. **档位阈值沿用 1.25 / 1.00 / 0.70**：引入零点后语义更严，当时分布从 M2 20 / M3 23 变成 M2 15 / M3 29（本轮补上 AA 漏映射后是 M2 16 / M3 28），还没有重定档。`model_plane.csv` 的 `next_tier_gap` 给出距下一档的距离，临界模型（当前最紧的是 Step 5 Preview 差 0.009 到 M2）应当按“临界”读，不要按“稳进”读。
+12. **档位阈值沿用 1.25 / 1.00 / 0.70**：引入零点后语义更严，当时分布从 M2 20 / M3 23 变成 M2 15 / M3 29（本轮补上 AA 漏映射后是 M2 16 / M3 28），还没有重定档。`model_plane.csv` 的 `next_tier_gap` 给出距下一档的距离，临界模型（当前最紧的是 Step 5 Preview 差 0.009 到 M2）应当按“临界”读，不要按“稳进”读；源级 bootstrap 给了更直接的答案：Step 5 Preview 的档位稳定率只有 0.598，全场最低的 Haiku 5.5 是 0.303（多数派 M0）。
 13. **BenchmarkList 只做交叉校验**：30 个候选里 28 个能凑出“含锚点 + 映射后 ≥5 个模型”的快照，可用源里 21 个来自同三个发布事件（kimi.ai 14 个、x.com 4 个、minimax.io 3 个），25 个的快照里混着厂商自报行；连 GPQA Diamond 这种全量榜，BL 的快照也只有 6 行（榜上 478 个模型），映射到 6 个。接进拟合会违反“不做厂商自报加权平均”，量化理由见 METHOD §4.1。
+14. **区间的宽度大于档位带宽**：源级 bootstrap 的中位区间宽度（P 0.453 / X 0.539）比一档的宽度（0.25）还大。除 M0 头部那批稳定率 0.95+ 的点，档位应当读成“大概在这一带”，不是“定在这一档”——`tier_stability` 与 `tier_mode` 就在 `model_plane.csv` 里，图上 tooltip 与表格也带着（METHOD §17）。
