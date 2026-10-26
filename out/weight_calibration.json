@@ -2,27 +2,27 @@
  "iterations": [
   {
    "iter": 1,
-   "max_dw": 0.2512,
-   "spearman": 0.98427,
-   "shift": 0.1642
+   "max_dw": 0.2509,
+   "spearman": 0.98177,
+   "shift": 0.16324
   },
   {
    "iter": 2,
-   "max_dw": 0.0338,
-   "spearman": 0.99944,
-   "shift": 0.01198
+   "max_dw": 0.0361,
+   "spearman": 0.99956,
+   "shift": 0.0131
   },
   {
    "iter": 3,
-   "max_dw": 0.0061,
+   "max_dw": 0.0066,
    "spearman": 0.99994,
    "shift": 0.00162
   },
   {
    "iter": 4,
-   "max_dw": 0.0006,
-   "spearman": 0.99994,
-   "shift": 0.00019
+   "max_dw": 0.0004,
+   "spearman": 1.0,
+   "shift": 0.00012
   },
   {
    "iter": 5,
@@ -35,9 +35,10 @@
  "public_share": 0.2,
  "tier_changed_vs_prior": [
   "haiku5.5",
+  "qwen3.8max0902",
   "step5preview"
  ],
- "perturb_flips_mean": 0.95,
+ "perturb_flips_mean": 0.65,
  "lam": 0.03,
  "eps": 0.05,
  "public_cap": 0.2,

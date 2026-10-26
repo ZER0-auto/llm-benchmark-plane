@@ -24,34 +24,34 @@
 
 | 源 | 快照 | 锚点 | 发布方 | 模型 | 自报占比 | 零点 z | 比值跨度 | 中位\|残差\| | 最大偏离 | 判读 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Terminal-Bench-Science | 2026-10-23 | 链式(副锚) | `www.kimi.ai` | 6 | 17% | — | 3.165 | 1.0927 | 2.4856 (gpt6astra) |  |
-| ChartQAPro | 2026-10-06 | 链式(副锚) | `mistral.ai` | 5 | 40% | — | 0.143 | 0.7959 | 1.4147 (mistralmedium3.5) | 已饱和，无区分度 |
-| ProgramBench | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 1.581 | 0.5845 | 0.9731 (opus5.5) |  |
-| SWE Atlas Codebase QnA | 2026-09-30 | 链式(副锚) | `x.com` | 7 | 14% | — | 0.195 | 0.5418 | 0.8676 (ling3.1flash) |  |
-| DRACO | 2026-09-30 | 链式(副锚) | `x.com` | 7 | 14% | — | 0.115 | 0.3317 | 0.8476 (ling3.1flash) | 已饱和，无区分度 |
-| MultiChallenge | 2026-09-30 | 链式(副锚) | `x.com` | 7 | 14% | — | 0.169 | 0.3768 | 0.8162 (ling3.1flash) |  |
-| HLE w/ tools | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 0.218 | 0.4737 | 0.8091 (gpt6astra) |  |
-| JobBench | 2026-09-22 | 链式(副锚) | `mimo.xiaomi.com` | 6 | 38% | — | 0.736 | 0.2385 | 0.8048 (mimov2.5pro) |  |
-| CyberGym | 2026-09-30 | 链式(副锚) | `x.com` | 5 | 20% | — | 0.074 | 0.1082 | 0.7793 (ling3.1flash) | 已饱和，无区分度 |
-| ArxivMath | 2026-10-03 | 链式(副锚) | `matharena.ai` | 16 | 0% | — | 0.739 | 0.2543 | 0.7443 (gemini3.1pro) |  |
-| GPQA Diamond | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 0.048 | 0.6067 | 0.7396 (gpt6astra) | 已饱和，无区分度 |
-| BrowseComp | 2026-10-03 | 链式(副锚) | `www.mercor.com` | 26 | 0% | 0.514 | 0.596 | 0.2236 | 0.6596 (fable5.1) |  |
-| MMMU-Pro | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.027 | 0.5402 | 0.6426 (gpt6astra) | 已饱和，无区分度 |
-| BabyVision | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.028 | 0.5439 | 0.5875 (gpt6astra) | 已饱和，无区分度 |
-| CharXiv-R | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.013 | 0.4891 | 0.5477 (gpt6astra) | 已饱和，无区分度 |
-| Chartography | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.031 | 0.5069 | 0.5354 (gpt6astra) | 已饱和，无区分度 |
-| PostTrainBench | 2026-10-19 | 链式(副锚) | `www.minimax.io` | 6 | 17% | — | 0.114 | 0.2177 | 0.4478 (minimaxm3.1flash) | 已饱和，无区分度 |
-| Agents' Last Exam | 2026-10-17 | 1017 | `api-docs.deepseek.com` | 6 | 33% | — | 0.054 | 0.1774 | 0.4427 (opus5) | 已饱和，无区分度 |
-| ZEROBench | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.098 | 0.3754 | 0.4195 (gpt6astra) | 已饱和，无区分度 |
-| DeepSWE 1.1 | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 0.112 | 0.1441 | 0.4184 (fable5.1) | 已饱和，无区分度 |
-| PerceptionBench | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.306 | 0.2115 | 0.4129 (kimik3.1pro) |  |
-| BankerToolBench | 2026-10-19 | 链式(副锚) | `www.minimax.io` | 6 | 17% | — | 0.08 | 0.0934 | 0.3944 (opus5) | 已饱和，无区分度 |
-| CWE-bench v1 | 2026-10-05 | 链式(副锚) | `cwe-bench.com` | 9 | 0% | — | 0.239 | 0.1726 | 0.3891 (fable5.1) |  |
-| SWE-Marathon | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 0.23 | 0.1538 | 0.3755 (kimik3.1pro) |  |
-| Terminal-Bench 3.0 | 2026-09-10 | 链式(副锚) | `api-docs.deepseek.com` | 7 | 43% | — | 0.985 | 0.2547 | 0.3487 (deepseekv4flash0731) |  |
-| NL2Repo | 2026-10-19 | 1017 | `www.minimax.io` | 7 | 14% | — | 0.271 | 0.1071 | 0.2781 (minimaxm3.1flash) |  |
-| BenchCAD Vision2Code-1000 | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.044 | 0.1589 | 0.219 (kimik3.1pro) | 已饱和，无区分度 |
-| OfficeQA Pro | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.16 | 0.1631 | 0.1944 (fable5.1) |  |
+| Terminal-Bench-Science | 2026-10-23 | 链式(副锚) | `www.kimi.ai` | 6 | 17% | — | 3.168 | 1.0715 | 2.4845 (gpt6astra) |  |
+| ChartQAPro | 2026-10-06 | 链式(副锚) | `mistral.ai` | 5 | 40% | — | 0.143 | 0.7011 | 1.4181 (mistralmedium3.5) | 已饱和，无区分度 |
+| ProgramBench | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 1.581 | 0.5765 | 0.9765 (opus5.5) |  |
+| SWE Atlas Codebase QnA | 2026-09-30 | 链式(副锚) | `x.com` | 7 | 14% | — | 0.195 | 0.4358 | 0.8687 (ling3.1flash) |  |
+| DRACO | 2026-09-30 | 链式(副锚) | `x.com` | 7 | 14% | — | 0.115 | 0.2708 | 0.8484 (ling3.1flash) | 已饱和，无区分度 |
+| MultiChallenge | 2026-09-30 | 链式(副锚) | `x.com` | 7 | 14% | — | 0.169 | 0.3772 | 0.8173 (ling3.1flash) |  |
+| JobBench | 2026-09-22 | 链式(副锚) | `mimo.xiaomi.com` | 6 | 38% | — | 0.737 | 0.2395 | 0.8054 (mimov2.5pro) |  |
+| HLE w/ tools | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 0.218 | 0.4323 | 0.8009 (gpt6astra) |  |
+| CyberGym | 2026-09-30 | 链式(副锚) | `x.com` | 5 | 20% | — | 0.074 | 0.1097 | 0.78 (ling3.1flash) | 已饱和，无区分度 |
+| ArxivMath | 2026-10-03 | 链式(副锚) | `matharena.ai` | 16 | 0% | — | 0.74 | 0.2441 | 0.7451 (gemini3.1pro) |  |
+| GPQA Diamond | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 0.048 | 0.5653 | 0.7314 (gpt6astra) | 已饱和，无区分度 |
+| BrowseComp | 2026-10-03 | 链式(副锚) | `www.mercor.com` | 26 | 0% | 0.515 | 0.597 | 0.2563 | 0.6625 (fable5.1) |  |
+| MMMU-Pro | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.027 | 0.5122 | 0.6358 (gpt6astra) | 已饱和，无区分度 |
+| BabyVision | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.028 | 0.5199 | 0.5821 (gpt6astra) | 已饱和，无区分度 |
+| CharXiv-R | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.013 | 0.4651 | 0.5423 (gpt6astra) | 已饱和，无区分度 |
+| Chartography | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.031 | 0.4829 | 0.53 (gpt6astra) | 已饱和，无区分度 |
+| Agents' Last Exam | 2026-10-17 | 1017 | `api-docs.deepseek.com` | 6 | 33% | — | 0.054 | 0.1795 | 0.4447 (opus5) | 已饱和，无区分度 |
+| PostTrainBench | 2026-10-19 | 链式(副锚) | `www.minimax.io` | 6 | 17% | — | 0.114 | 0.2135 | 0.431 (minimaxm3.1flash) | 已饱和，无区分度 |
+| DeepSWE 1.1 | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 0.112 | 0.1485 | 0.4224 (fable5.1) | 已饱和，无区分度 |
+| ZEROBench | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.098 | 0.3554 | 0.4155 (gpt6astra) | 已饱和，无区分度 |
+| CWE-bench v1 | 2026-10-05 | 链式(副锚) | `cwe-bench.com` | 9 | 0% | — | 0.239 | 0.1621 | 0.3964 (fable5.1) |  |
+| BankerToolBench | 2026-10-19 | 链式(副锚) | `www.minimax.io` | 6 | 17% | — | 0.08 | 0.0947 | 0.3956 (opus5) | 已饱和，无区分度 |
+| PerceptionBench | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.306 | 0.1915 | 0.3926 (kimik3.1pro) |  |
+| SWE-Marathon | 2026-10-23 | 1017 | `www.kimi.ai` | 6 | 17% | — | 0.23 | 0.1578 | 0.3525 (kimik3.1pro) |  |
+| Terminal-Bench 3.0 | 2026-09-10 | 链式(副锚) | `api-docs.deepseek.com` | 7 | 43% | — | 0.986 | 0.2542 | 0.3493 (deepseekv4pro0813) |  |
+| NL2Repo | 2026-10-19 | 1017 | `www.minimax.io` | 7 | 14% | — | 0.271 | 0.1072 | 0.2604 (minimaxm3.1flash) |  |
+| OfficeQA Pro | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.16 | 0.1402 | 0.1984 (fable5.1) |  |
+| BenchCAD Vision2Code-1000 | 2026-10-23 | 1017 | `www.kimi.ai` | 5 | 20% | — | 0.044 | 0.1629 | 0.1961 (kimik3.1pro) | 已饱和，无区分度 |
 
 ## 弃用
 

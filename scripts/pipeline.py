@@ -11,7 +11,7 @@
 import csv, json, re, math, os, statistics
 from collections import Counter
 from vals_map import VALS_MAP
-from aa_map import AA_MAP
+from aa_map import AA_MAP, AA_UNMAPPED
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(BASE, "data")
@@ -148,13 +148,22 @@ def load_vals():
 def load_aa():
     p = os.path.join(DATA, "aa", "aa_rows.csv")
     if not os.path.exists(p): return {}
-    agg = {}
+    agg, seen = {}, set()
     for r in csv.DictReader(open(p, encoding="utf-8-sig")):
+        seen.add(r["model_slug"])
         key = AA_MAP.get(r["model_slug"])
         if not key: continue
         agg.setdefault(r["source_id"], []).append(
             {"key": key, "name": r["model_name"], "raw_name": r["model_slug"], "version": "aa-2026-10",
              "date": "2026-10-25", "value": float(r["score"])})
+    # 映射表漂移自检：这张表是手写的，抓取端的 slug 写法一变就会静默失去整片证据
+    # （2026-10-26 实测 20 条里 11 条永不命中，AA 五个源各只剩 9 个模型，跑了很久没人发现）
+    dead = sorted(set(AA_MAP) - seen)
+    unknown = sorted(seen - set(AA_MAP) - AA_UNMAPPED)
+    if dead:
+        print(f"  aa: {len(dead)} 条映射在数据里永不命中（slug 写法漂移？）：{'、'.join(dead)}")
+    if unknown:
+        print(f"  aa: {len(unknown)} 个 slug 既没映射也不在 AA_UNMAPPED：{'、'.join(unknown)}")
     return agg
 
 # ---------- 版本筛选 ----------
