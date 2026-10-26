@@ -197,26 +197,59 @@ def main():
     nsat = sum(1 for s in used if s["ratio_spread"] and float(s["ratio_spread"]) < 0.15)
     need("§4.1 饱和源数", mt, f"{len(used)} 个可用源里 {nsat} 个的观测比值跨度 < 0.15", "METHOD")
 
-    # ---------- 源级 bootstrap（METHOD §17 / README） ----------
+    # ---------- 源级 bootstrap（METHOD §17 / README 口径摘要与限制 14） ----------
     bt = met.get("bootstrap")
+    has_cells = any(r["tier_stability"] for r in plane)
+    eq("bootstrap 开关与产物一致（metrics 有则表里必须有值，反之必须空）", bool(bt), has_cells)
     if bt:
-        need("§17 bootstrap 汇总", mt,
-             f"本轮（{bt['runs']} 次、seed={bt['seed']}、{bt['sources']} 个源）：{bt['models']} 个模型全部算出区间；"
-             f"区间宽度中位 P {bt['width_med_p']} / X {bt['width_med_x']}；档位稳定率中位 {bt['stability_med']}；"
+        need("§17 规模与在场", mt,
+             f"本轮（{bt['runs']} 次、seed={bt['seed']}、{bt['sources']} 个源，每次平均只有 "
+             f"{bt['sources_covered_mean']} 个源在场）：{bt['models']} 个模型全部算出区间；"
+             f"区间宽度中位 P {bt['width_med_p']} / X {bt['width_med_x']}", "METHOD")
+        byt = "、".join(f"{t} {v['med']:.3f}（n={v['n']}）" for t, v in bt["stability_by_tier"].items())
+        need("§17 分档稳定率", mt,
+             f"分档看是：{byt}，全表中位 {bt['stability_med']}。", "METHOD")
+        need("§17 名单", mt,
              f"稳定率 <0.5 的 {len(bt['unstable'])} 个（{'、'.join(bt['unstable'])}）；"
-             f"多数派档位与标出档位不同的 {len(bt['modal_differs'])} 个（{'、'.join(bt['modal_differs'])}）。", "METHOD")
+             f"多数派与标出档位不同的 {len(bt['modal_differs'])} 个", "METHOD")
         for k in bt["modal_differs"]:
             r = next(x for x in plane if x["model_key"] == k)
             need(f"§17 {k} 的多数派", mt, f"{r['model_id']} 标 {r['tier']}、多数派 {r['tier_mode']}", "METHOD")
+        need("§17 在场率与退化", mt,
+             f"证据在场率 <90% 的有 {len(bt['low_presence'])} 个模型，区间退化（宽度 0）的也是 {len(bt['degenerate'])} 个",
+             "METHOD")
         a = next(r for r in plane if r["model_key"] == "deepseekv4.1flash1017")
-        need("§17 锚点自检（区间应为 0 宽）", mt, f"基准模型 1017 的区间是 {a['P_lo']}~{a['P_hi']}", "METHOD")
+        need("§17 1017 是同义反复而不是自检", mt,
+             f"基准模型 1017 的区间同样是 {a['P_lo']}~{a['P_hi']}", "METHOD")
+        eq("§17 点估计必须落在自己的区间内（outside_band 应为空）", [], bt.get("outside_band"))
+        eq("§17 每个模型都有区间（no_evidence 应为空）", [], bt.get("no_evidence"))
         need("README 口径摘要 bootstrap", rd,
              f"源级 bootstrap（{bt['sources']} 个计分源有放回抽 {bt['runs']} 次，seed={bt['seed']}）给出 "
-             f"P_lo / P_hi / X_lo / X_hi（{bt['interval']}）与 tier_stability；区间宽度中位 "
-             f"P {bt['width_med_p']} / X {bt['width_med_x']} 比一档带宽（0.25）还宽", "README")
+             f"P_lo / P_hi / X_lo / X_hi（{bt['interval']}）、tier_stability、tier_presence、tier_mode；"
+             f"区间宽度中位 P {bt['width_med_p']} / X {bt['width_med_x']} 比一档带宽（0.25）还宽，"
+             f"档位稳定率中位只有 {bt['stability_med']}", "README")
         worst = min([r for r in plane if r["tier_stability"]], key=lambda r: float(r["tier_stability"]))
         need("README 最不稳模型", rd,
              f"全场最低的 {worst['model_id']} 是 {worst['tier_stability']}（多数派 {worst['tier_mode']}）", "README")
+        need("README 限制 14 在场率", rd,
+             f"另有 {len(bt['low_presence'])} 个模型的证据在场率低于 90%", "README")
+        # 文档里承诺的 bootstrap 列名必须真的在表头里（表头与文档脱钩是最容易发生的一种漂移）
+        header = list(plane[0].keys())
+        for col in ("P_lo", "P_hi", "X_lo", "X_hi", "tier_stability", "tier_presence", "tier_mode"):
+            eq(f"表头含 {col}", True, col in header)
+            need(f"README 列清单含 {col}", rd, col, "README")
+
+    # ---------- 不动点（out/settle.json ↔ METHOD §15） ----------
+    spath = os.path.join(BASE, "out", "settle.json")
+    if os.path.exists(spath):
+        se = json.loads(read("out", "settle.json"))
+        eq("settle 已到不动点", True, se["converged"])
+        need("§15 不动点轮数", mt, f"实测第 {se['rounds']} 轮即不动", "METHOD")
+        m = re.search(r"直到 `max\|Δw\| < ([0-9.eE+\-]+)`", mt)
+        eq("§15 容差与 settle.json 一致", se["tol"], float(m.group(1)) if m else None)
+    else:
+        print("  提示 out/settle.json 不存在：本轮没跑 settle_weights.py，"
+              "无法证明基线在不动点上（改过权重或数据后必须跑）")
 
     bad = [c for c in checks if not c[0]]
     for ok, label, want, got in checks:

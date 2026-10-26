@@ -29,8 +29,8 @@ MIN_SRC_PER_MODEL = 4      # 留一至少要剩下的源数（两因子要够解
 GRADE = {"A": 1.00, "A-": 0.90, "B+": 0.80, "B": 0.70, "C+": 0.55, "C": 0.40}
 
 
-# 与管道共用同一个估计器（有界 + 按残差降权），否则留一残差量的是另一套模型
-from pipeline import fit_px_robust, ratio_bounds
+# 与管道共用同一个估计器（有界 + 按残差降权）与同一个判档实现，否则留一残差量的是另一套模型
+from pipeline import fit_px_robust, ratio_bounds, tier_of
 
 
 def fit_px(items, lam=LAM, bounds=None):
@@ -201,9 +201,9 @@ def main():
             p, x = fit_px([(weights[s], a, r) for s, a, r, _f in items], LAM, bounds_of(items))
             if p is None:
                 continue
-            top = max(p, x)
-            out[k] = ("M0" if top >= 1.25 else "M1" if top >= 1.00
-                      else "M2" if top >= 0.70 else "M3")
+            # 判档只用管道那一份实现（§8：先取整到发布的三位小数，再进 tier_of）。
+            # 这里原来自己写了一份 "top >= 1.25 …" 且用未取整的值，边界模型会与 CSV 的档位不一致
+            out[k] = tier_of(max(round(p, 3), round(x, 3)))
         return out
 
     import random

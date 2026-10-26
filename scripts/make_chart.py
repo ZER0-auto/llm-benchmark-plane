@@ -10,6 +10,12 @@ def num(r, k):
     v = r.get(k, "")
     return None if v in ("", "-1", "-1.0") else float(v)
 
+def numb(r, k):
+    """bootstrap 列专用的解析：只有空串算"没算"。
+    不能复用 num()——它把 "-1" 当哨兵吞掉，而 P_lo / X_lo 真的会等于 -1.0（负坐标模型）。"""
+    v = r.get(k, "")
+    return None if v == "" else float(v)
+
 data = []
 for r in rows:
     data.append({
@@ -29,10 +35,11 @@ for r in rows:
         "fit": float(r.get("fit_rmse") or 0), "rrange": r.get("ratio_range") or "",
         "dw": r.get("downweighted") or "",
         "clamp": r.get("clamped") == "1",
-        # 源级 bootstrap（跑管道时带 --bootstrap 才有；缺列就是没算）
-        "p_lo": num(r, "P_lo"), "p_hi": num(r, "P_hi"),
-        "x_lo": num(r, "X_lo"), "x_hi": num(r, "X_hi"),
-        "stab": num(r, "tier_stability"), "tmode": r.get("tier_mode") or "",
+        # 源级 bootstrap（表头恒在；没跑 --bootstrap 就是空 → None）
+        "p_lo": numb(r, "P_lo"), "p_hi": numb(r, "P_hi"),
+        "x_lo": numb(r, "X_lo"), "x_hi": numb(r, "X_hi"),
+        "stab": numb(r, "tier_stability"), "pres": numb(r, "tier_presence"),
+        "tmode": r.get("tier_mode") or "",
     })
 
 ev = list(csv.DictReader(open(os.path.join(OUT, "model_evidence.csv"), encoding="utf-8-sig")))
@@ -348,7 +355,7 @@ function showTip(d,e){
     ${d.only?`<span class="k">注意</span> 仅 ${d.only} 轴已测，位置按 P=X 假设放置<br>`:""}
     ${(d.pcov<0.35&&d.cov<0.35)?`<span class="k">证据薄</span> 两轴覆盖度都低于 35%，数值靠先验撑住，只作参考<br>`:""}
     <span class="k">拟合</span> RMSE ${d.fit.toFixed(2)} · 观测比值 ${d.rrange}${d.clamp?"（坐标已钳位到该区间）":""}<br>
-    ${d.p_lo!=null?`<span class="k">源级 bootstrap</span> P ${d.p_lo}~${d.p_hi} · X ${d.x_lo}~${d.x_hi} · 档位稳定率 ${(d.stab*100).toFixed(0)}%${d.tmode&&d.tmode!==d.tier?`（多数派 ${d.tmode}）`:""}<br>`:""}
+    ${d.p_lo!=null?`<span class="k">源级 bootstrap</span> P ${d.p_lo}~${d.p_hi} · X ${d.x_lo}~${d.x_hi} · 档位稳定率 ${(d.stab*100).toFixed(0)}%${d.pres<0.99?`（证据在场 ${(d.pres*100).toFixed(0)}% 的重采样）`:""}${d.tmode&&d.tmode!==d.tier?` · 多数派 ${d.tmode}`:""}<br>`:""}
     ${d.dw?`<span class="k">降权</span> 这个模型上剖面打架的源：${d.dw}<br>`:""}
     ${d.x2!=null?`<span class="k">X2 可恢复</span> ${d.x2.toFixed(1)}%<br>`:""}
     ${raw?`<span class="k">各源比值</span> ${raw}<br>`:""}
@@ -376,7 +383,7 @@ tbl.innerHTML="<table><thead><tr><th>模型</th><th>P</th><th>X</th><th>档位</
  DATA.slice().sort((a,b)=>b.P-a.P).map(d=>`<tr><td>${d.name}</td>
  <td>${f(d.P)}</td><td>${f(d.X)}</td><td>${d.tier}</td>
  <td>${d.p_lo==null?"—":d.p_lo+"~"+d.p_hi}</td><td>${d.x_lo==null?"—":d.x_lo+"~"+d.x_hi}</td>
- <td>${d.stab==null?"—":(d.stab*100).toFixed(0)+"%"+(d.tmode&&d.tmode!==d.tier?"（多数派 "+d.tmode+"）":"")}</td>
+ <td>${d.stab==null?"—":(d.stab*100).toFixed(0)+"%"+(d.pres<0.99?"（在场 "+(d.pres*100).toFixed(0)+"%）":"")+(d.tmode&&d.tmode!==d.tier?"·多数派 "+d.tmode:"")}</td>
  <td>${(d.P>=0&&d.X>=0)?"是":"否（坐标为负）"}</td>
  <td>${(d.pcov*100).toFixed(0)}%</td><td>${(d.cov*100).toFixed(0)}%</td><td style="text-align:left;color:#6b7280">${d.src}</td></tr>`).join("")+
  "</tbody></table>";
@@ -392,6 +399,24 @@ html = html.replace("__SECX__", f'{METRICS.get("sec", {}).get("X", 0):.3f}')
 DROP_NAMES = "、".join(k for k in METRICS.get("dropped", {})) or "无"
 NEAR_NAMES = "、".join(METRICS.get("near_ceiling", [])) or "无"
 html = html.replace("__DROPPED__", DROP_NAMES).replace("__NEAR__", NEAR_NAMES)
+html = html.replace("__THIN__", str(meta["thin"]))
+BOOT = METRICS.get("bootstrap") or {}
+if BOOT:
+    byt = "、".join(f"{t} {v['med']:.2f}" for t, v in BOOT["stability_by_tier"].items())
+    html = html.replace("__BOOT__", (
+        f"表格与 tooltip 里的区间来自<b>源级 bootstrap</b>（{BOOT['runs']} 次有放回重采样，"
+        f"单位=计分源 {BOOT['sources']} 个，seed={BOOT['seed']}，取 {BOOT['interval']} 分位）——"
+        f"<b>它是「换一批榜会差多少」的跨榜组成敏感性，不是同一批数据的置信区间</b>："
+        f"每次重采样平均只有 {BOOT['sources_covered_mean']} 个源在场，锚点/版本切分/零点阈值/λ/档位阈值都不在区间里。"
+        f"区间宽度中位 P {BOOT['width_med_p']} / X {BOOT['width_med_x']}（一档带宽只有 0.25），末位小数是蒙特卡洛噪声。"
+        f"档位稳定率（分母=全部重采样）中位 {BOOT['stability_med']}，分档看是 {byt}；"
+        f"稳定率 <0.5 的有 {len(BOOT['unstable'])} 个（{'、'.join(BOOT['unstable'])}），"
+        f"多数派与标出档位不同的 {len(BOOT['modal_differs'])} 个（{'、'.join(BOOT['modal_differs'])}），"
+        f"证据在场率 <90% 的 {len(BOOT['low_presence'])} 个（只有一个来源的模型会在约三分之一的重采样里<b>完全没有坐标</b>，"
+        f"这类点的区间宽度为 0 不代表确定，只代表该榜单独决定它），"
+        f"点估计落在自己区间外的 {len(BOOT['outside_band'])} 处（应为 0）。"))
+else:
+    html = html.replace("__BOOT__", "本次运行没有算 bootstrap 区间（跑 python scripts/pipeline.py --bootstrap 1000 之后重出图）。")
 html = html.replace("__THIN__", str(meta["thin"]))
 BOOT = METRICS.get("bootstrap") or {}
 if BOOT:

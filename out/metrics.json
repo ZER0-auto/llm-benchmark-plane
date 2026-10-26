@@ -170,9 +170,66 @@
   "interval": "5-95%",
   "models": 60,
   "models_total": 60,
+  "no_evidence": [],
   "width_med_p": 0.453,
   "width_med_x": 0.539,
-  "stability_med": 0.942,
+  "stability_med": 0.736,
+  "stability_by_tier": {
+   "M0": {
+    "n": 10,
+    "med": 0.909,
+    "min": 0.696
+   },
+   "M1": {
+    "n": 6,
+    "med": 0.68,
+    "min": 0.303
+   },
+   "M2": {
+    "n": 16,
+    "med": 0.696,
+    "min": 0.564
+   },
+   "M3": {
+    "n": 28,
+    "med": 0.756,
+    "min": 0.449
+   }
+  },
+  "presence_med": 1.0,
+  "low_presence": [
+   "deepseekv4flash",
+   "dots3notepreview",
+   "ernie5.1",
+   "gpt5.5instant",
+   "hy3",
+   "ling3.1flash",
+   "longcat2.0",
+   "openpangu2.0flash",
+   "openpangu2.0pro",
+   "qwen3.8flash",
+   "seed2.0lite0428",
+   "seed2.1pro0915",
+   "sparkx2.5",
+   "sparkx2.6"
+  ],
+  "degenerate": [
+   "deepseekv4.1flash1017",
+   "deepseekv4flash",
+   "dots3notepreview",
+   "ernie5.1",
+   "gpt5.5instant",
+   "ling3.1flash",
+   "minimaxm3",
+   "openpangu2.0flash",
+   "openpangu2.0pro",
+   "qwen3.8flash",
+   "seed2.0lite0428",
+   "seed2.1pro0915",
+   "sparkx2.5",
+   "sparkx2.6"
+  ],
+  "sources_covered_mean": 17.3,
   "unstable": [
    "haiku5.5",
    "kimik3",
@@ -181,6 +238,7 @@
   "modal_differs": [
    "haiku5.5",
    "musespark1.2"
-  ]
+  ],
+  "outside_band": []
  }
 }

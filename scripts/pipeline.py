@@ -618,7 +618,7 @@ def fit_all(ev):
 
 
 # ---------- 四、源级 bootstrap：坐标区间 + 档位稳定率 ----------
-BOOT_COLS = ["P_lo", "P_hi", "X_lo", "X_hi", "tier_stability", "tier_mode"]
+BOOT_COLS = ["P_lo", "P_hi", "X_lo", "X_hi", "tier_stability", "tier_presence", "tier_mode"]
 BOOT_SEED = 20261026
 
 
@@ -648,37 +648,62 @@ def bootstrap(ev, point_tier, runs=1000, seed=BOOT_SEED):
     不是 30 次独立观测；按行抽会把这张榜的自相关当成信息的量。
     版本、链式等效基准、零点 z 全部沿用 build 的结果（不重估），
     解算走 fit_model 同一条路径（含 p10~p90 钳位与 IRLS 按模型降权）。
+    注意它量的是**跨榜组成敏感性**：27 个源有放回抽 27 次，每次平均只有约 17 个源在场
+    （单个源被抽到的概率 ≈ 1 − (26/27)^27 ≈ 0.63），所以区间回答的是"换一批约 17 块榜，
+    坐标会差多少"，不是"同一批数据的抽样误差"；锚点选取、版本切分、z≤0.75 阈值、λ、
+    档位阈值都不体现在区间里（见 METHOD §17）。
+    复制 k 次会让那张榜的权重也乘 k、从而相对削弱岭正则——实测把每次重采样的权重质量
+    归一回全量质量，中位宽度只从 P 0.431 变到 0.418 / X 0.536 变到 0.566，
+    不是主因，所以这里保留朴素的可复制加权（少一层解释成本）。
 
-    `tier_stability` = 重采样里落回点估计同一档的比例；0.5 上下就是"这档是掷骰子掷出来的"。
-    解不出来（抽到的源对这个模型一个都不剩）的次数超过一半就不给区间，避免把
-    "没证据"读成"很确定"。
+    `tier_stability` 的分母是**全部重采样次数**：抽不到任何证据的那几次算"没落回原档"。
+    用"有证据的次数"当分母会把结论反过来——只有一个源的模型在源被抽到时按构造必然同档
+    （区间退化成一点），于是最没证据的模型稳定率最高（实测 12 个单源模型全报 1.000）。
+    所以另给 `tier_presence`（该模型的证据在本次重采样里在场的比例）：单源模型约 0.63，
+    意思是"三分之一多的次数里它根本没有坐标"。
     """
     import random
     src_ids = sorted({s for ps in ev["parts"].values() for (_w, _r, s, _f) in ps})
     rng = random.Random(seed)
-    acc, tacc = {k: [] for k in ev["parts"]}, {k: [] for k in ev["parts"]}
+    seq = {k: [] for k in ev["parts"]}      # 每次重采样一个槽：None = 这次抽不到该模型的任何源
+    cover = []
     for _ in range(runs):
         counts = Counter(rng.choices(src_ids, k=len(src_ids)))
+        cover.append(len(counts))
         got = resample(ev["parts"], counts, ev["max_p"], ev["max_x"])
-        for k, (P3, X3, t) in got.items():
-            acc[k].append((P3, X3)); tacc[k].append(t)
+        for k in seq:
+            seq[k].append(got.get(k))
     out = {}
-    for k, v in acc.items():
-        if len(v) < runs // 2: continue
+    for k, sl in seq.items():
+        v = [t for t in sl if t is not None]
+        if not v: continue
         pv = sorted(x[0] for x in v); xv = sorted(x[1] for x in v)
-        modal = Counter(tacc[k]).most_common(1)[0][0]
+        tiers = [x[2] for x in v]
         out[k] = {"P_lo": round(quantile(pv, 0.05), 3), "P_hi": round(quantile(pv, 0.95), 3),
                   "X_lo": round(quantile(xv, 0.05), 3), "X_hi": round(quantile(xv, 0.95), 3),
-                  "stability": round(sum(1 for t in tacc[k] if t == point_tier.get(k)) / len(v), 3),
-                  "n": len(v), "modal_tier": modal}
-    stabilities = sorted(out[k]["stability"] for k in out)
-    out["_meta"] = {"runs": runs, "seed": seed, "unit": "source", "sources": len(src_ids),
-                    "interval": "5-95%", "models": len(out), "models_total": len(ev["parts"]),
-                    "width_med_p": round(statistics.median([out[k]["P_hi"] - out[k]["P_lo"] for k in out]), 3),
-                    "width_med_x": round(statistics.median([out[k]["X_hi"] - out[k]["X_lo"] for k in out]), 3),
-                    "stability_med": round(quantile(stabilities, 0.5), 3),
-                    "unstable": sorted(k for k in out if out[k]["stability"] < 0.5),
-                    "modal_differs": sorted(k for k in out if out[k]["modal_tier"] != point_tier.get(k))}
+                  "stability": round(sum(1 for t in tiers if t == point_tier.get(k)) / runs, 3),
+                  "presence": round(len(v) / runs, 3),
+                  "n": len(v), "modal_tier": Counter(tiers).most_common(1)[0][0]}
+    by_tier = {}
+    for k, b in out.items():
+        by_tier.setdefault(point_tier.get(k, "?"), []).append(b["stability"])
+    out["_meta"] = {
+        "runs": runs, "seed": seed, "unit": "source", "sources": len(src_ids),
+        "interval": "5-95%", "models": len(out), "models_total": len(ev["parts"]),
+        "no_evidence": sorted(k for k in ev["parts"] if k not in out),
+        "width_med_p": round(statistics.median([b["P_hi"] - b["P_lo"] for b in out.values()]), 3),
+        "width_med_x": round(statistics.median([b["X_hi"] - b["X_lo"] for b in out.values()]), 3),
+        "stability_med": round(statistics.median([b["stability"] for b in out.values()]), 3),
+        # 分档报告：混在一起的中位数会被 M0/M3 那两头（一侧无界 + 区间退化的单源模型）抬起来
+        "stability_by_tier": {t: {"n": len(v), "med": round(statistics.median(v), 3),
+                                  "min": round(min(v), 3)} for t, v in sorted(by_tier.items())},
+        "presence_med": round(statistics.median([b["presence"] for b in out.values()]), 3),
+        "low_presence": sorted(k for k, b in out.items() if b["presence"] < 0.9),
+        "degenerate": sorted(k for k, b in out.items()
+                             if b["P_hi"] == b["P_lo"] and b["X_hi"] == b["X_lo"]),
+        "sources_covered_mean": round(statistics.mean(cover), 1),
+        "unstable": sorted(k for k, b in out.items() if b["stability"] < 0.5),
+        "modal_differs": sorted(k for k, b in out.items() if b["modal_tier"] != point_tier.get(k))}
     return out
 
 
@@ -708,17 +733,21 @@ def plane_rows(st, ev, fits, boot=None):
         row += [round(rmap[s], 3) if s in rmap else "" for s in ORDER]
         if boot is not None:
             b = boot.get(k)
-            row += ([b["P_lo"], b["P_hi"], b["X_lo"], b["X_hi"], b["stability"], b["modal_tier"]]
-                    if b else [""] * 6)
+            row += ([b["P_lo"], b["P_hi"], b["X_lo"], b["X_hi"], b["stability"], b["presence"],
+                     b["modal_tier"]] if b else [""] * 7)
+        else:
+            row += [""] * 7          # 表头恒含这 7 列：下游不用同时伺候两种 schema
         plane.append(row)
     return plane
 
 
-def plane_cols(boot=False):
+def plane_cols():
+    """表头恒含 bootstrap 的 7 列（没跑 `--bootstrap` 就是空串）：
+    列集合随开关变的话，下游每个读表的地方都要同时伺候两种 schema（迟早出错）。"""
     return (["model_id", "model_key", "P", "X", "tier", "tags", "axis_only",
              "P_coverage", "X_coverage", "fit_rmse", "next_tier_gap", "ratio_range", "clamped",
              "downweighted", "sources", "X2"] +
-            ["r_" + s.replace("-", "_") for s in ORDER] + (BOOT_COLS if boot else []))
+            ["r_" + s.replace("-", "_") for s in ORDER] + BOOT_COLS)
 
 
 def write_evidence(st, ev, fits):
@@ -739,10 +768,21 @@ def write_evidence(st, ev, fits):
     evf.close()
 
 
+def arg_int(name, default):
+    """命令行取整数：--flag 缺值或值不是数字就直接退出，别静默退回默认值
+    （"以为跑了 1000 次其实跑了 0 次"是最难发现的那类错误）。"""
+    if name not in sys.argv: return default
+    i = sys.argv.index(name)
+    if i + 1 >= len(sys.argv): raise SystemExit(f"{name} 缺参数值")
+    try:
+        return int(sys.argv[i + 1])
+    except ValueError:
+        raise SystemExit(f"{name} 的值不是整数：{sys.argv[i + 1]!r}")
+
+
 def main():
-    argv = sys.argv[1:]
-    runs = int(argv[argv.index("--bootstrap") + 1]) if "--bootstrap" in argv else 0
-    seed = int(argv[argv.index("--boot-seed") + 1]) if "--boot-seed" in argv else BOOT_SEED
+    runs = arg_int("--bootstrap", 0)
+    seed = arg_int("--boot-seed", BOOT_SEED)
 
     st = build()
     ev = evidence(st)
@@ -756,22 +796,37 @@ def main():
         t0 = time.time()
         boot = bootstrap(ev, point_tier, runs, seed)
         meta = boot["_meta"]
+        # 点估计必须落在自己的 5~95 区间里；不落就是实现有问题（分位数取法、缺次数的分母、
+        # 重采样与点估计不同路径），当场数出来并写进产物，别等读者发现
+        outside = []
+        for k, f in fits.items():
+            b = boot.get(k)
+            if not b: continue
+            P3, X3 = round(f["p"], 3), round(f["x"], 3)
+            if not (b["P_lo"] - 1e-9 <= P3 <= b["P_hi"] + 1e-9): outside.append(f"{k}:P")
+            if not (b["X_lo"] - 1e-9 <= X3 <= b["X_hi"] + 1e-9): outside.append(f"{k}:X")
+        meta["outside_band"] = outside
         st["metrics"]["bootstrap"] = {k: meta[k] for k in meta}
         print(f"bootstrap：{meta['runs']} 次 × {meta['models_total']} 个模型"
               f"（重采样单位={meta['unit']}，{meta['sources']} 个源，seed={meta['seed']}，"
               f"区间 {meta['interval']}），耗时 {time.time() - t0:.0f}s")
-        print(f"  区间宽度中位：P {meta['width_med_p']} / X {meta['width_med_x']}；"
-              f"档位稳定率中位 {meta['stability_med']}；"
-              f"稳定率 <0.5 的 {len(meta['unstable'])} 个；多数派档位与点估计不同的 {len(meta['modal_differs'])} 个")
+        print(f"  每次重采样平均在场 {meta['sources_covered_mean']} 个源（不是 27 个）；"
+              f"区间宽度中位 P {meta['width_med_p']} / X {meta['width_med_x']}（一档带宽 0.25）")
+        print("  档位稳定率（分母=全部重采样）中位 " + f"{meta['stability_med']}" + "，分档：" +
+              "、".join(f"{t} {v['med']:.2f}(n={v['n']})" for t, v in meta["stability_by_tier"].items()))
+        print(f"  稳定率 <0.5 的 {len(meta['unstable'])} 个；多数派与点估计不同的 {len(meta['modal_differs'])} 个；"
+              f"证据在场率 <90% 的 {len(meta['low_presence'])} 个；区间退化（宽度 0）的 {len(meta['degenerate'])} 个；"
+              f"点估计落在自己区间外的 {len(meta['outside_band'])} 处")
         worst = sorted((k for k in boot if k != "_meta"), key=lambda k: boot[k]["stability"])[:5]
         for k in worst:
             b = boot[k]
             print(f"  最不稳：{ev['names'][k]:24s} {point_tier[k]}（多数派 {b['modal_tier']}）"
-                  f" 稳定率 {b['stability']:.2f}  P [{b['P_lo']}~{b['P_hi']}] X [{b['X_lo']}~{b['X_hi']}]")
+                  f" 稳定率 {b['stability']:.2f} 在场 {b['presence']:.2f}"
+                  f"  P [{b['P_lo']}~{b['P_hi']}] X [{b['X_lo']}~{b['X_hi']}]")
 
     plane = plane_rows(st, ev, fits, boot)
     pl = open(os.path.join(OUT, "model_plane.csv"), "w", newline="", encoding="utf-8-sig")
-    cw = csv.writer(pl, lineterminator="\n"); cw.writerow(plane_cols(boot=boot is not None))
+    cw = csv.writer(pl, lineterminator="\n"); cw.writerow(plane_cols())
     for r in sorted(plane, key=lambda x: (-x[2], -x[3])): cw.writerow(r)
     pl.close()
     with open(os.path.join(OUT, "metrics.json"), "w", encoding="utf-8") as mf:

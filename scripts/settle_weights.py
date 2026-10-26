@@ -2,23 +2,25 @@
 """权重 ↔ 管道的不动点迭代（METHOD §15）。
 
 为什么要单独有个脚本：`calibrate_weights.py` 读的是 `out/model_evidence.csv`，而那份证据里的
-比值本身又依赖 `weight_cal` —— 链式榜的等效基准是用**带权的**副锚因子 P_sec / X_sec 折算出来的
+比值本身依赖 `weight_cal` —— 链式榜的等效基准是用**带权的**副锚因子 P_sec / X_sec 折算出来的
 （§6）。所以"跑一次 calibrate 就写回 sources.csv"留下的是不自洽的基线：权重是拿**旧权重**
 生成的证据校准出来的。2026-10-26 实测这种一步之差会让基准模型 1017 的坐标落到 1.0 以下、
 在 CSV 里显示成 "1.0 / M2"，并把 P_sec 从 0.9171 推到 0.9170。
 
-本脚本交替跑 calibrate → pipeline，直到 `sources.csv` 的 `weight_cal` 不再变化，最后出图。
+本脚本交替跑 calibrate → pipeline，直到 `sources.csv` 的 `weight_cal` 不再变化，最后把收敛证据
+写进 `out/settle.json`（谁跑了几轮、最后的 max|Δw| 是多少），再出图。
 收敛后就是自洽基线：再跑多少次都不动（实测 max|Δw| = 0，逐轮比特级一致）。
 
 用法：
   python scripts/settle_weights.py                # 最多 8 轮
   python scripts/settle_weights.py --max-rounds 5
-退出码：0 = 到不动点；1 = 到达轮数上限仍未收敛（把最后两轮的权重交给你人工判断）。
+退出码：0 = 到不动点；1 = 到达轮数上限仍未收敛（不重出图，交给人工判断）。
 """
-import csv, os, subprocess, sys
+import csv, json, os, subprocess, sys
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(BASE, "sources.csv")
+SETTLE = os.path.join(BASE, "out", "settle.json")
 TOL = 1e-9
 
 
@@ -41,6 +43,16 @@ def run(script, grep=None):
             if grep in line: print("   ", line)
 
 
+def record(rounds, final_dw, converged, tol, n_src):
+    """把"基线是在不动点上重算的"落成产物：只打印在 stdout 等于没说过，没人会翻日志。
+    check_docs.py 拿这个文件去核对 METHOD §15 里那句"实测第 N 轮即不动"。"""
+    with open(SETTLE, "w", encoding="utf-8") as f:
+        json.dump({"rounds": rounds, "final_max_dw": final_dw, "tol": tol,
+                   "converged": converged, "start": "weight_prior", "sources": n_src},
+                  f, ensure_ascii=False, indent=1)
+    print(f"   -> out/settle.json（rounds={rounds}, final_max_dw={final_dw}, converged={converged}）")
+
+
 def main():
     max_rounds = 8
     if "--max-rounds" in sys.argv:
@@ -57,11 +69,13 @@ def main():
             if last_d < TOL:
                 print(f"  第 {it} 轮权重不再变化 → 已到不动点"
                       f"（{sum(1 for v in cur.values() if v > 0)} 个源有权重 / 登记 {len(cur)} 个）")
+                record(it, last_d, True, TOL, len(cur))
                 run("make_chart.py")
                 return 0
         prev = cur
     print(f"  警告：{max_rounds} 轮仍未收敛（最后一轮 max|Δw| = {last_d}）；"
-          f"再加大 --max-rounds 或人工看 sources.csv")
+          f"再加大 --max-rounds 或人工看 sources.csv；本次不重出图")
+    record(max_rounds, last_d, False, TOL, len(prev or {}))
     return 1
 
 
