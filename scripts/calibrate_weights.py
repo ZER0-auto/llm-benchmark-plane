@@ -20,7 +20,6 @@ SRC = os.path.join(BASE, "sources.csv")
 REPORT = os.path.join(BASE, "out", "weight_calibration.csv")
 
 TODAY = date(2026, 10, 25)
-LAM = 0.03
 EPS = 0.05
 PUBLIC_CAP = 0.20          # 公开源权重占比上限
 SINGLE_CAP = 0.22          # 单个来源最多占总权重这么多，避免一榜独大
@@ -30,7 +29,10 @@ GRADE = {"A": 1.00, "A-": 0.90, "B+": 0.80, "B": 0.70, "C+": 0.55, "C": 0.40}
 
 
 # 与管道共用同一个估计器（有界 + 按残差降权）与同一个判档实现，否则留一残差量的是另一套模型
-from pipeline import fit_px_robust, ratio_bounds, tier_of
+from pipeline import fit_px_robust, ratio_bounds, tier_of, LAM_DEFAULT
+
+# 岭强度只有管道那一处定义（本脚本原来另写了一份 LAM = 0.03，改 λ 时迟早漏改）
+LAM = LAM_DEFAULT
 
 
 def fit_px(items, lam=LAM, bounds=None):

@@ -239,6 +239,15 @@ def main():
             eq(f"表头含 {col}", True, col in header)
             need(f"README 列清单含 {col}", rd, col, "README")
 
+    # ---------- BL 弃用原因（§4.1 的括号必须与产物的 reason 字段同一口径） ----------
+    rej = [s for s in bl if s["status"] != "对照"]
+    ns = {re.search(r"只有 (\d+) 个", s["note"]).group(1) for s in rej if re.search(r"只有 (\d+) 个", s["note"])}
+    if len(ns) == 1:
+        need("§4.1 弃用源与原因", mt, "（" + "、".join(s["name"] for s in rej) +
+             f"：含锚点的快照只有 {ns.pop()} 个平面里有坐标的模型）", "METHOD")
+    else:
+        checks.append((False, "§4.1 弃用原因不是同一个口径", "所有弃用源同一句话", sorted(ns)))
+
     # ---------- 不动点（out/settle.json ↔ METHOD §15） ----------
     spath = os.path.join(BASE, "out", "settle.json")
     if os.path.exists(spath):

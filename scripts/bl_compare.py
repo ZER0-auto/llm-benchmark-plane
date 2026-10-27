@@ -23,10 +23,10 @@ BL 的逐模型成绩基本来自厂商自己的发布稿（kimi.ai / minimax.io
   python scripts/bl_compare.py --update-registry   # 同时把 mapped_models / snapshot 回填候选清单
 
 快照选择（与 pipeline 的"版本内必须含锚点"同源，排序键不同）：
-  1. 只保留含主锚点（1017）或副锚点（次新 Flash）、锚点分 > 0、且映射后 ≥ MIN_MODELS 个模型的快照
+  1. 只保留含主锚点（1017）或副锚点（次新 Flash）、锚点分 > 0、且平面里有坐标的模型 ≥ MIN_MODELS 个的快照
      （锚点 0 分 = 该轮没测出东西，比值无定义，与 pipeline 的守卫同一条规则）
-     门槛数的是**映射到的 key**（`mapped`）；其中平面里没有坐标的 key 过得了门槛却产不出残差，
-     所以摘要另给 `in_plane`（= mapped 减去 ghost_keys）与 `ghost_keys`，别让「模型数」虚报样本量
+     门槛与"模型多优先"都按 `in_plane`（平面里真有 P/X 的模型数），不再按 `mapped`：
+     映射得到但平面里没有坐标的 key 记在 `ghost_keys`，只作诊断、不替小表撑样本量
   2. 同一 version 内出现"同 slug 同配置不同分"→ 该 version 是重复发布，整块弃用
      这一条只在旧数据（没有 snapshot_id、只能按天分组）上触发；新抓的数据按快照号分组，
      两份同日快照各自独立，挑一份用即可——比值在同一份表内自洽，不会再被 max 合并。
@@ -123,8 +123,13 @@ def is_duplicated(rows):
     return any(len(v) > 1 for v in seen.values())
 
 
-def snapshot_candidates(rows, alpha, sec):
-    """产出一个源的全部快照候选，附带可用性与排序键。"""
+def snapshot_candidates(rows, alpha, sec, plane):
+    """产出一个源的全部快照候选，附带可用性与排序键。
+
+    `in_plane` = 快照里"本项目平面真有坐标"的模型数，`ghost` = 映射得到但没有 P/X 的 key
+    （BL_MAP 覆盖的模型比平面广，那些 key 从未在带锚点的榜上出现过）。
+    门槛与排序都按 `in_plane`：幽灵 key 产不出残差，不该替一张小表撑大样本量。
+    """
     groups, _has_id = groups_of(rows)
     cands = []
     for ver in sorted({r["version"] for r in rows}, reverse=True):
@@ -159,6 +164,8 @@ def snapshot_candidates(rows, alpha, sec):
                 "rows": g,
                 "by_key": by_key,
                 "n": n,
+                "in_plane": sum(1 for k in by_key if k in plane),
+                "ghost": sorted(k for k in by_key if k not in plane),
                 "anchor": anchor,
                 "self_share": sum(1 for r in g if r["self_reported"] == "1") / len(g),
                 "publisher": urlparse(g[0].get("source_url") or "").netloc,
@@ -169,16 +176,18 @@ def snapshot_candidates(rows, alpha, sec):
 
 
 def pick(cands):
-    ok = [c for c in cands if c["n"] >= MIN_MODELS and c["anchor"] and not c["dup"]]
+    # 门槛与"模型多优先"都按 in_plane（平面里真有坐标的模型数），不看 mapped
+    ok = [c for c in cands if c["in_plane"] >= MIN_MODELS and c["anchor"] and not c["dup"]]
     if not ok:
         return None
-    # 最新 → 模型数多 → 自报占比低 → snapshot_id 大（同日两份快照里取后 ingest 的那份）。
+    # 最新 → 平面里有坐标的模型多 → 自报占比低 → snapshot_id 大（同日两份快照里取后 ingest 的那份）。
     # 最后一级是必须的：前三键全等时排序会退化成"输入顺序"，同一份数据换次运行就可能换快照。
-    return sorted(ok, key=lambda c: (c["version"], c["n"], -c["self_share"], c["snapshot_id"]),
+    return sorted(ok, key=lambda c: (c["version"], c["in_plane"], -c["self_share"], c["snapshot_id"]),
                   reverse=True)[0]
 
 
 def reason_of(cands):
+    """弃用原因，判定顺序必须与 pick() 的筛子一致，否则报告会谎称原因。"""
     if not cands:
         return "无数据"
     with_anchor = [c for c in cands if c["anchor"]]
@@ -187,10 +196,15 @@ def reason_of(cands):
             return "锚点分数为 0，比值无定义"
         return "全部快照都没有主锚或副锚"
     clean = [c for c in with_anchor if not c["dup"]]
-    best = max((c["n"] for c in clean), default=0)
-    if best and best < MIN_MODELS:
-        return f"含锚点的快照最多只有 {best} 个可映射模型（<{MIN_MODELS}）"
-    return "快照重复发布（同日两份表，数值不自洽）"
+    if not clean:
+        return "快照重复发布（同日两份表，数值不自洽）"
+    n_plane = max(c["in_plane"] for c in clean)
+    n_map = max(c["n"] for c in clean)
+    if n_plane < MIN_MODELS:
+        extra = (f"，另有 {n_map - n_plane} 个映射到但平面里没有坐标（不算样本量）"
+                 if n_map > n_plane else "")
+        return f"含锚点的快照最多只有 {n_plane} 个平面里有坐标的模型（<{MIN_MODELS}）{extra}"
+    return "快照都够用却被弃用：pick() 的筛子与这里的判定不一致，请检查"
 
 
 def main():
@@ -206,7 +220,7 @@ def main():
     detail, summary = [], []
     for sid in sorted(reg, key=lambda s: reg[s]["name"]):
         meta = reg[sid]
-        cands = snapshot_candidates(by_source.get(sid, []), meta["alpha"], sec) \
+        cands = snapshot_candidates(by_source.get(sid, []), meta["alpha"], sec, plane) \
             if by_source.get(sid) else []
         best = pick(cands)
         if not best:
@@ -217,10 +231,8 @@ def main():
                             "max_model": "", "z": "", "spread": "", "reason": reason_of(cands)})
             continue
 
-        # mapped 里可能混着"映射得到、但平面里没有坐标"的 key（BL_MAP 覆盖的模型比平面广，
-        # 那些 key 从未在带锚点的榜上出现过）。它们过得了 ≥5 门槛、却产不出残差，
-        # 所以必须单独计数，否则摘要里的"模型"数是在虚报对照的样本量。
-        ghost = sorted(k for k in best["by_key"] if k not in plane)
+        # ghost = 映射得到但平面里没有 P/X 的 key：按 in_plane 判门槛，它既不算样本也不产残差
+        ghost, in_plane = best["ghost"], best["in_plane"]
         z = None
         if ZERO_KEY in best["by_key"] and best["anchor"][1]:
             z = best["by_key"][ZERO_KEY][0] / best["anchor"][1]
@@ -257,7 +269,7 @@ def main():
             "anchor_kind": best["anchor"][0],
             "publisher": best["publisher"],
             "rows": len(best["rows"]), "mapped": best["n"],
-            "in_plane": best["n"] - len(ghost), "ghost": ghost,
+            "in_plane": in_plane, "ghost": ghost,
             "self_share": round(best["self_share"], 3),
             "checked": len(resid),
             "z": "" if z is None else round(z, 3),
