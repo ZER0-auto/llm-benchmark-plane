@@ -780,13 +780,23 @@ def plane_rows(st, ev, fits, bounds, boot=None):
         # 读者无法核对，而且权重第 5 位小数的抖动就能翻档。
         P3, X3 = round(p, 3), round(x, 3)
         top = max(P3, X3)
-        tier = tier_of(top, bounds)
+        # 两个档位口径，都留在产物里：
+        #   tier_point = 坐标落在哪一段（按发布的三位小数坐标比当轮边界）
+        #   tier       = **标注档位** = 源级 bootstrap 里的多数派（众数）
+        # 为什么要分开：坐标贴在边界上的模型，点估计这一档只拿到四成多的票，
+        # 而"最可能落在哪一档"比"这次算出来落在哪一档"更不依赖抽样运气。
+        # 代价是标注档位可能与读者按坐标+参考线核出来的那档不同——所以 `tier_point` 必须
+        # 一起发布，图上对不一致的点加虚线外圈（make_chart），tooltip 写清两个档位。
+        # 没跑 bootstrap 时没有"多数派"，标注档位退化为点估计（此时 tier == tier_point）。
+        tier_point = tier_of(top, bounds)
+        b = boot.get(k) if boot else None
+        tier = (b["modal_tier"] if b else "") or tier_point
         # 距上一档还差多少（边界由 tier_bounds 给）；差值只有 0.01 量级就说明贴在边界上
         gap = tier_gap(top, bounds)
         hi_band = bounds[0] if bounds else top
         tag = ("P+" if P3 >= hi_band else "") + ("X+" if X3 >= hi_band else "") + ("0锚" if k == ZERO_KEY else "")
         rmap = {s: r for w, r, s, _f in ps}
-        row = [names[k], k, P3, X3, tier, tag, "",
+        row = [names[k], k, P3, X3, tier, tier_point, tag, "",
                round(fit["pcov"], 3), round(fit["xcov"], 3), round(fit["rmse"], 3), gap,
                f"{fit['lo']:.2f}~{fit['hi']:.2f}", fit["clamp"], fit["dw"],
                "+".join(s for _, _, s, _f in ps),
@@ -805,7 +815,7 @@ def plane_rows(st, ev, fits, bounds, boot=None):
 def plane_cols():
     """表头恒含 bootstrap 的 7 列（没跑 `--bootstrap` 就是空串）：
     列集合随开关变的话，下游每个读表的地方都要同时伺候两种 schema（迟早出错）。"""
-    return (["model_id", "model_key", "P", "X", "tier", "tags", "axis_only",
+    return (["model_id", "model_key", "P", "X", "tier", "tier_point", "tags", "axis_only",
              "P_coverage", "X_coverage", "fit_rmse", "next_tier_gap", "ratio_range", "clamped",
              "downweighted", "sources", "X2"] +
             ["r_" + s.replace("-", "_") for s in ORDER] + BOOT_COLS)
@@ -905,6 +915,12 @@ def main():
         json.dump(st["metrics"], mf, ensure_ascii=False, indent=1)
 
     print(f"\nplane={len(plane)} tiers={dict(Counter(r[4] for r in plane))}")
+    moved = [(r[0], r[5], r[4]) for r in plane if r[4] != r[5]]
+    if boot is None:
+        print("未跑 bootstrap：没有多数派可依，标注档位=点估计（tier == tier_point）")
+    else:
+        print(f"标注档位=多数派；与点估计不同的 {len(moved)} 个（tier_point → tier）："
+              + "、".join(f"{n} {a}→{b}" for n, a, b in moved))
     print("基准分（各源各版本）：", {f"{k[0]}@{k[1]}": round(v, 2) for k, v in st["anchor_of"].items()})
 
 

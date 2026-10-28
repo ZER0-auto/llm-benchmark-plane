@@ -131,7 +131,8 @@ def main():
          f"本轮边界 {' / '.join(f'{b:.3f}' for b in TBv)}，"
          f"档位分布 M0 {tiers['M0']} / M1 {tiers['M1']} / M2 {tiers['M2']} / M3 {tiers['M3']}", "README")
     gaps = sorted([r for r in plane if r["next_tier_gap"]], key=lambda r: float(r["next_tier_gap"]))
-    nxt = {"M0": None, "M1": "M0", "M2": "M1", "M3": "M2"}[gaps[0]["tier"]]
+    # 标注档位是多数派，可能已经换成相邻那一档；"距上一档"必须按点估计档位找方向
+    nxt = {"M0": None, "M1": "M0", "M2": "M1", "M3": "M2"}[gaps[0]["tier_point"]]
     need("最紧临界点", rd, f"当前最紧的是 {gaps[0]['model_id']} 差 {float(gaps[0]['next_tier_gap']):.3f} 到 {nxt}", "README")
 
     used = [s for s in bl if s["status"] == "对照"]
@@ -231,14 +232,30 @@ def main():
              f"{bt['sources_covered_mean']} 个源在场）：{bt['models']} 个模型全部算出区间；"
              f"区间宽度中位 P {bt['width_med_p']} / X {bt['width_med_x']}", "METHOD")
         byt = "、".join(f"{t} {v['med']:.3f}（n={v['n']}）" for t, v in bt["stability_by_tier"].items())
-        need("§17 分档稳定率", mt,
-             f"分档看是：{byt}，全表中位 {bt['stability_med']}。", "METHOD")
-        need("§17 名单", mt,
-             f"稳定率 <0.5 的 {len(bt['unstable'])} 个（{'、'.join(bt['unstable'])}）；"
-             f"多数派与标出档位不同的 {len(bt['modal_differs'])} 个", "METHOD")
-        for k in bt["modal_differs"]:
-            r = next(x for x in plane if x["model_key"] == k)
-            need(f"§17 {k} 的多数派", mt, f"{r['model_id']} 标 {r['tier']}、多数派 {r['tier_mode']}", "METHOD")
+        need("§17 分档稳定率", mt,
+             f"分档看是：{byt}，全表中位 {bt['stability_med']}", "METHOD")
+        need("§17 名单", mt,
+             f"稳定率 <0.5 的 {len(bt['unstable'])} 个（{'、'.join(bt['unstable'])}）；"
+             f"点估计与多数派不同的 {len(bt['modal_differs'])} 个", "METHOD")
+        moved = [r for r in plane if r["model_key"] in bt["modal_differs"]]
+        need("§17 点估计与多数派不一致的逐个说明", mt,
+             "其中 " + "；".join(f"{r['model_id']} 点估计 {r['tier_point']}、多数派 {r['tier_mode']}"
+                                f"（稳定率 {r['tier_stability']}）" for r in moved) + "。", "METHOD")
+        # 标注档位必须**就是**多数派：产物里 tier 与 tier_mode 不一致说明有地方在偷偷用点估计
+        eq("标注档位 = 多数派（tier == tier_mode）", [],
+           [r["model_key"] for r in plane if r["tier_mode"] and r["tier"] != r["tier_mode"]])
+        eq("tier≠tier_point 的名单 = metrics.bootstrap.modal_differs",
+           sorted(bt["modal_differs"]), sorted(r["model_key"] for r in plane if r["tier"] != r["tier_point"]))
+        eq("tier_point 列在表头里", "tier_point",
+           "tier_point" if "tier_point" in plane[0] else "缺列")
+        need("README 标注档位口径", rd, "**标注档位取多数派**（源级 bootstrap 里出现次数最多的那一档）", "README")
+        need("METHOD §8 标注档位口径", mt, "**标注档位取多数派**：源级 bootstrap 里", "METHOD")
+        # 这一段曾被"删重复块"的脚本误删过整句（它正好夹在两个重复块之间），
+        # 也曾在每次 sync 时被再追加一份。两个毛病都用断言钉住。
+        eq("§8 标注档位那段只出现一次（sync 不叠罗汉）", 1, mt.count("**标注档位取多数派**"))
+        need("§8 档位按发布坐标判定（别再被整句吞掉）", mt,
+             "档位比较用**发布出来的三位小数坐标**（`round(P,3)`），不是原始浮点值", "METHOD")
+        need("§17 分档按点估计档位分组", mt, "分组按**点估计**档位", "METHOD")
         need("§17 在场率与退化", mt,
              f"证据在场率 <90% 的有 {len(bt['low_presence'])} 个模型，区间退化（宽度 0）的也是 {len(bt['degenerate'])} 个",
              "METHOD")
@@ -259,8 +276,9 @@ def main():
         need("§12 参考线用当轮边界", mt,
              "参考线：当轮算出的三条边界（" + " / ".join(f"{b:.3f}" for b in TBv), "METHOD")
         worst = min([r for r in plane if r["tier_stability"]], key=lambda r: float(r["tier_stability"]))
-        need("README 最不稳模型", rd,
-             f"全场最低的 {worst['model_id']} 是 {worst['tier_stability']}（多数派 {worst['tier_mode']}）", "README")
+        need("README 最不稳模型", rd,
+             f"全场最低的 {worst['model_id']} 是 {worst['tier_stability']}"
+             f"（点估计 {worst['tier_point']}、多数派 {worst['tier_mode']}）", "README")
         need("README 限制 14 在场率", rd,
              f"另有 {len(bt['low_presence'])} 个模型的证据在场率低于 90%", "README")
         # 文档里承诺的 bootstrap 列名必须真的在表头里（表头与文档脱钩是最容易发生的一种漂移）

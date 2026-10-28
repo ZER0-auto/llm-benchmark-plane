@@ -21,7 +21,8 @@ for r in rows:
     data.append({
         "name": r["model_id"], "key": r.get("model_key", r["model_id"]),
         "P": float(r["P"]), "X": float(r["X"]),
-        "tier": r["tier"], "cov": float(r["X_coverage"]), "src": r["sources"],
+        "tier": r["tier"], "tpoint": r.get("tier_point") or r["tier"],
+        "cov": float(r["X_coverage"]), "src": r["sources"],
         "only": r.get("axis_only", ""),
         "x2": num(r, "X2"), "code": num(r, "r_code_v3"), "shi": num(r, "r_shishan"),
         "vibe": num(r, "r_vibe_code"), "mig": num(r, "r_code_migration_v1_1"),
@@ -123,6 +124,7 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 __LEGEND__
   <span>● 双轴已测　○ 仅 P　◇ 仅 X</span>
   <span><i style="background:none;border:1.5px dashed #9aa1ac"></i>证据薄（两轴覆盖度都 &lt;35%）</span>
+  <span><i style="background:none;border:1.5px dashed #64748b"></i>标注档位取多数派，与点估计不同（外圈那圈）</span>
   <span>放不下时按档位隐藏标签（<b id="hidn">0</b> 个），悬停仍显示名字</span>
 </div>
 <svg id="chart" viewBox="0 0 1420 900" role="img"></svg>
@@ -250,6 +252,14 @@ function draw(){
       mk=el("circle",{cx,cy,r:5.6,fill:COLOR[d.tier],stroke:COLOR[d.tier],"stroke-width":1,class:"mk"},g);
     }
     const t=el("text",{},g); t.textContent=d.name; t.style.fill=COLOR[d.tier];
+    // 标注档位（多数派）与点估计不同：点明明画在另一档的区间里，只看颜色会以为图画错了。
+    // 加一圈灰色虚线外圈（画在标记下面），图例与 tooltip 都写明两个档位。
+    if(d.tpoint!==d.tier){
+      const ring=el("circle",{cx,cy,r:8.6,fill:"none",stroke:"#64748b","stroke-width":1,
+        "stroke-dasharray":"2.2 2.2",class:"mkr"},g);
+      ring.setAttribute("data-tp",d.tpoint);
+      g.insertBefore(ring,mk);
+    }
     const w=t.getComputedTextLength()+4, hgt=14;
 
     const sp=spot(cx,cy,w,hgt,170,false);
@@ -348,7 +358,7 @@ function showTip(d,e){
              .filter(x=>x[1]!=null).map(x=>`${x[0]} ${x[1].toFixed(1)}`).join(" · ");
   tip.innerHTML=`<b>${d.name}</b><br>
     <span class="k">P 规划</span> ${f(d.P)}×　<span class="k">X 执行</span> ${f(d.X)}×<br>
-    <span class="k">档位</span> ${d.tier}　<span class="k">覆盖</span> P ${(d.pcov*100).toFixed(0)}% · X ${(d.cov*100).toFixed(0)}%<br>
+    <span class="k">档位</span> ${d.tier}${d.tpoint!==d.tier?`（多数派；点估计 ${d.tpoint}，虚线外圈）`:""}　<span class="k">覆盖</span> P ${(d.pcov*100).toFixed(0)}% · X ${(d.cov*100).toFixed(0)}%<br>
     ${d.only?`<span class="k">注意</span> 仅 ${d.only} 轴已测，位置按 P=X 假设放置<br>`:""}
     ${(d.pcov<0.35&&d.cov<0.35)?`<span class="k">证据薄</span> 两轴覆盖度都低于 35%，数值靠先验撑住，只作参考<br>`:""}
     <span class="k">拟合</span> RMSE ${d.fit.toFixed(2)} · 观测比值 ${d.rrange}${d.clamp?"（坐标已钳位到该区间）":""}<br>
@@ -378,7 +388,7 @@ q.addEventListener("input",()=>{
 const tbl=document.getElementById("tbl");
 tbl.innerHTML="<table><thead><tr><th>模型</th><th>P</th><th>X</th><th>档位</th><th>P 区间</th><th>X 区间</th><th>档位稳定率</th><th>在图上</th><th>P 覆盖</th><th>X 覆盖</th><th>来源</th></tr></thead><tbody>"+
  DATA.slice().sort((a,b)=>b.P-a.P).map(d=>`<tr><td>${d.name}</td>
- <td>${f(d.P)}</td><td>${f(d.X)}</td><td>${d.tier}</td>
+ <td>${f(d.P)}</td><td>${f(d.X)}</td><td>${d.tier}${d.tpoint!==d.tier?`（点估计 ${d.tpoint}）`:""}</td>
  <td>${d.p_lo==null?"—":d.p_lo+"~"+d.p_hi}</td><td>${d.x_lo==null?"—":d.x_lo+"~"+d.x_hi}</td>
  <td>${d.stab==null?"—":(d.stab*100).toFixed(0)+"%"+(d.pres<0.99?"（在场 "+(d.pres*100).toFixed(0)+"%）":"")+(d.tmode&&d.tmode!==d.tier?"·多数派 "+d.tmode:"")}</td>
  <td>${(d.P>=0&&d.X>=0)?"是":"否（坐标为负）"}</td>
@@ -410,7 +420,12 @@ html = html.replace("__LEGEND__", "\n".join(
     f'\n  <span><i style="background:{TCOLORS[len(TB)]}"></i>{TLAB[-1]}（任一轴 &lt;{TB[-1]:.3f}）</span>')
 html = html.replace("__TIERLINE__",
     "档位：取两轴中较高者；<b>边界每轮由数据自己算</b>（自然断裂，不写死数值），本轮 "
-    + "、".join(f"{t} ≥{b:.3f}" for t, b in zip(TLAB, TB)) + f"，其余 {TLAB[-1]}（相邻边界间距 {GAPS}）")
+    + "、".join(f"{t} ≥{b:.3f}" for t, b in zip(TLAB, TB)) + f"，其余 {TLAB[-1]}（相邻边界间距 {GAPS}）"
+    + "。<b>标注档位取多数派</b>（源级 bootstrap 里出现次数最多的那一档）；"
+    + (f"本轮有 {len((METRICS.get('bootstrap') or {}).get('modal_differs') or [])} 个模型的多数派与点估计不同，"
+       f"图上颜色按多数派、另加一圈灰色虚线外圈，tooltip 与表格里同时写出点估计档位"
+       if (METRICS.get("bootstrap") or {}).get("modal_differs") is not None else
+       "本次没有跑 bootstrap（没有多数派），标注档位等于点估计"))
 html = html.replace("__THREF__", json.dumps([[round(b, 3), t, c]
                                             for b, t, c in zip(TB, TLAB, TCOLORS)]))
 BOOT = METRICS.get("bootstrap") or {}
