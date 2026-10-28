@@ -1,10 +1,10 @@
 {
  "sec": {
-  "P": 0.917,
-  "X": 0.7567
+  "P": 0.9175,
+  "X": 0.7598
  },
  "dropped": {
-  "medscribe": 103.15,
+  "medscribe": 102.91,
   "srebench": 0.94,
   "terminal-bench-science": 0.0
  },
@@ -15,97 +15,97 @@
  "chained": {
   "biomysterybench": {
    "alpha": 0.65,
-   "r_anchor": 0.8609,
+   "r_anchor": 0.8623,
    "sec_raw": 67.78,
-   "equiv": 78.73,
+   "equiv": 78.6,
    "ceiling": 100.0,
    "near": false
   },
   "cyber": {
    "alpha": 0.4,
-   "r_anchor": 0.8209,
+   "r_anchor": 0.8229,
    "sec_raw": 73.69,
-   "equiv": 89.77,
+   "equiv": 89.55,
    "ceiling": 100.0,
    "near": false
   },
   "ioi": {
    "alpha": 0.6,
-   "r_anchor": 0.8529,
+   "r_anchor": 0.8545,
    "sec_raw": 40.28,
-   "equiv": 47.22,
+   "equiv": 47.14,
    "ceiling": 100.0,
    "near": false
   },
   "legal_bench": {
    "alpha": 0.85,
-   "r_anchor": 0.893,
+   "r_anchor": 0.8939,
    "sec_raw": 83.28,
-   "equiv": 93.26,
+   "equiv": 93.16,
    "ceiling": 100.0,
    "near": true
   },
   "medcode": {
    "alpha": 0.55,
-   "r_anchor": 0.8449,
+   "r_anchor": 0.8466,
    "sec_raw": 41.17,
-   "equiv": 48.73,
+   "equiv": 48.63,
    "ceiling": 100.0,
    "near": false
   },
   "mysterymechanism": {
    "alpha": 0.85,
-   "r_anchor": 0.893,
+   "r_anchor": 0.8939,
    "sec_raw": 21.17,
-   "equiv": 23.71,
+   "equiv": 23.68,
    "ceiling": 100.0,
    "near": false
   },
   "proof_bench": {
    "alpha": 0.9,
-   "r_anchor": 0.901,
+   "r_anchor": 0.9018,
    "sec_raw": 54.0,
-   "equiv": 59.93,
+   "equiv": 59.88,
    "ceiling": 100.0,
    "near": false
   },
   "public-benefits-bench": {
    "alpha": 0.5,
-   "r_anchor": 0.8369,
+   "r_anchor": 0.8387,
    "sec_raw": 64.28,
-   "equiv": 76.8,
+   "equiv": 76.64,
    "ceiling": 100.0,
    "near": false
   },
   "sage": {
    "alpha": 0.9,
-   "r_anchor": 0.901,
+   "r_anchor": 0.9018,
    "sec_raw": 47.88,
-   "equiv": 53.14,
+   "equiv": 53.1,
    "ceiling": 100.0,
    "near": false
   },
   "shishan": {
    "alpha": 0.5,
-   "r_anchor": 0.8369,
+   "r_anchor": 0.8387,
    "sec_raw": 78.93,
-   "equiv": 94.32,
+   "equiv": 94.12,
    "ceiling": 100.0,
    "near": true
   },
   "skillsbench": {
    "alpha": 0.4,
-   "r_anchor": 0.8209,
+   "r_anchor": 0.8229,
    "sec_raw": 69.8,
-   "equiv": 85.04,
+   "equiv": 84.82,
    "ceiling": 100.0,
    "near": false
   },
   "swebench-multimodal": {
    "alpha": 0.35,
-   "r_anchor": 0.8128,
+   "r_anchor": 0.815,
    "sec_raw": 46.46,
-   "equiv": 57.16,
+   "equiv": 57.0,
    "ceiling": 100.0,
    "near": false
   }
@@ -113,30 +113,30 @@
  "zero_ref": "minimaxm3",
  "zero_z": {
   "code-migration-v1-1": 0.3095,
-  "cyber": 0.7241,
+  "cyber": 0.7259,
   "legal_research": 0.6596,
   "logic": 0.4258,
-  "proof_bench": 0.3003,
-  "skillsbench": 0.6056,
-  "swebench-multimodal": 0.5832,
+  "proof_bench": 0.3006,
+  "skillsbench": 0.6071,
+  "swebench-multimodal": 0.5848,
   "tax_agent_bench": 0.4642,
   "terminal-bench-4": 0.0317,
   "vibe-code": 0.5422
  },
  "zero_penalty": {
   "code-migration-v1-1": 1.0,
-  "cyber": 0.552,
+  "cyber": 0.548,
   "emb-v1-1": 0.272,
   "fabv2-1": 0.273,
-  "legal_bench": 0.168,
+  "legal_bench": 0.166,
   "legal_research": 0.681,
   "logic": 1.0,
   "medcode": 0.1,
   "proof_bench": 1.0,
-  "public-benefits-bench": 0.33,
+  "public-benefits-bench": 0.326,
   "sage": 0.1,
-  "skillsbench": 0.789,
-  "swebench-multimodal": 0.834,
+  "skillsbench": 0.786,
+  "swebench-multimodal": 0.83,
   "tax_agent_bench": 1.0,
   "terminal-bench-4": 1.0,
   "vibe-code": 0.916
@@ -152,15 +152,21 @@
  "zero_skip_z": {
   "emb-v1-1": 0.8638,
   "fabv2-1": 0.8634,
-  "legal_bench": 0.9159,
-  "medcode": 0.9499,
-  "public-benefits-bench": 0.8351,
-  "sage": 0.9517
+  "legal_bench": 0.9168,
+  "medcode": 0.9518,
+  "public-benefits-bench": 0.8369,
+  "sage": 0.9525
  },
  "thresholds": {
-  "M0": 1.25,
-  "M1": 1.0,
-  "M2": 0.7
+  "values": [
+   1.26,
+   0.597,
+   -0.134
+  ],
+  "method": "jenks-1d-kmeans",
+  "bands": 4,
+  "fixed": false,
+  "basis": "max(P,X) 的点估计分布"
  },
  "bootstrap": {
   "runs": 1000,
@@ -168,32 +174,37 @@
   "unit": "source",
   "sources": 27,
   "interval": "5-95%",
-  "models": 60,
-  "models_total": 60,
+  "models": 64,
+  "models_total": 64,
+  "bounds_used": [
+   1.26,
+   0.597,
+   -0.134
+  ],
   "no_evidence": [],
-  "width_med_p": 0.453,
-  "width_med_x": 0.539,
-  "stability_med": 0.736,
+  "width_med_p": 0.459,
+  "width_med_x": 0.54,
+  "stability_med": 0.85,
   "stability_by_tier": {
    "M0": {
     "n": 10,
-    "med": 0.909,
-    "min": 0.696
+    "med": 0.904,
+    "min": 0.681
    },
    "M1": {
-    "n": 6,
-    "med": 0.68,
-    "min": 0.303
+    "n": 27,
+    "med": 0.961,
+    "min": 0.53
    },
    "M2": {
     "n": 16,
-    "med": 0.696,
-    "min": 0.564
+    "med": 0.682,
+    "min": 0.341
    },
    "M3": {
-    "n": 28,
-    "med": 0.756,
-    "min": 0.449
+    "n": 11,
+    "med": 0.682,
+    "min": 0.682
    }
   },
   "presence_med": 1.0,
@@ -231,13 +242,12 @@
   ],
   "sources_covered_mean": 17.3,
   "unstable": [
-   "haiku5.5",
-   "kimik3",
-   "musespark1.2"
+   "glm5.3flash",
+   "k2horizon375ba23b"
   ],
   "modal_differs": [
-   "haiku5.5",
-   "musespark1.2"
+   "glm5.3flash",
+   "k2horizon375ba23b"
   ],
   "outside_band": []
  }

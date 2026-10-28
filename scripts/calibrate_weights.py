@@ -75,6 +75,18 @@ def main():
     src_rows = list(csv.DictReader(io.open(SRC, encoding="utf-8-sig")))
     meta = {r["id"]: r for r in src_rows if r["status"] in ("active", "guarded")}
 
+    # 档位边界取自管道这一轮发布的 out/metrics.json（由 tier_bounds 从数据算出，不是写死的常数）。
+    # 读不到就退出：没有边界就没法判"换档"，悄悄退回旧常数是最容易骗过人的那类错误。
+    mpath = os.path.join(BASE, "out", "metrics.json")
+    if not os.path.exists(mpath):
+        raise SystemExit("缺 out/metrics.json：先跑 python scripts/pipeline.py 再跑权重校准")
+    th = json.load(open(mpath, encoding="utf-8")).get("thresholds") or {}
+    if not th.get("values"):
+        raise SystemExit("out/metrics.json 里没有 thresholds.values（旧版管道写的固定常数？）："
+                         "先跑 python scripts/pipeline.py 再跑校准")
+    BOUNDS = tuple(th["values"])
+    print("判档边界（来自 out/metrics.json，由数据算出）：", " / ".join(f"{b:+.3f}" for b in BOUNDS))
+
     # 逐模型证据
     per_model = {}
     per_src = {}
@@ -203,9 +215,9 @@ def main():
             p, x = fit_px([(weights[s], a, r) for s, a, r, _f in items], LAM, bounds_of(items))
             if p is None:
                 continue
-            # 判档只用管道那一份实现（§8：先取整到发布的三位小数，再进 tier_of）。
-            # 这里原来自己写了一份 "top >= 1.25 …" 且用未取整的值，边界模型会与 CSV 的档位不一致
-            out[k] = tier_of(max(round(p, 3), round(x, 3)))
+            # 判档只用管道那一份实现 + 管道那一轮发布出来的边界（§8、§17）。
+            # 原来这里自己写了一份 "top >= 1.25 …" 且用未取整的值，边界模型会与 CSV 的档位打架
+            out[k] = tier_of(max(round(p, 3), round(x, 3)), BOUNDS)
         return out
 
     import random

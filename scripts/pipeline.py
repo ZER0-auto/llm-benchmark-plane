@@ -48,6 +48,8 @@ def load_registry():
 SOURCES = load_registry()
 SECONDARY_KEY = "deepseekv4.1flash"
 LAM_DEFAULT = 0.03
+TIERS = ("M0", "M1", "M2", "M3")   # 档位数固定，边界由数据定（tier_bounds）
+TIER_BANDS = 4                     # 分成几档 = 边界个数 + 1
 ZERO_KEY = "minimaxm3"      # 零点参照：1017=1 之外再钉一个 0（MiniMax-M3，14+ 个榜都在场）
 ZERO_OK_MAX = 0.50          # 零点超过锚点一半 → 该榜动态范围太窄，按 (1−z)/0.5 降权
 ZERO_APPLY_MAX = 0.75       # 零点超过锚点 3/4：这块榜根本分不开基准与弱模，不做零点修正（否则放大出 -4.6 这种数）   # 岭回归强度：证据少时把 P/X 拉向加权均值   # 与基准不同的模型，但可作链式锚点
@@ -530,7 +532,6 @@ def build():
         "zero_penalty": {s: round(v, 3) for s, v in sorted(zero_pen.items())},
         "zero_skip": sorted(zero_skip),
         "zero_skip_z": {s: round(z, 4) for s, z in sorted(zero_skip_z.items())},
-        "thresholds": {"M0": 1.25, "M1": 1.00, "M2": 0.70},
     }
     return {"per_source": per_source, "anchor_of": anchor_of, "sec": sec,
             "zero_of": zero_of, "zero_pen": zero_pen, "x2map": x2map,
@@ -567,26 +568,28 @@ def evidence(st):
 
 
 # ---------- 三、解算（唯一入口） ----------
-def fit_model(ps, max_p, max_x):
+def fit_model(ps, max_p, max_x, lam=LAM_DEFAULT, alpha_of=None):
     """一个模型 → {p, x, clamp…, rmse, pcov, xcov, ps}；没有有效证据返回 None。
 
-    管道出点估计、bootstrap 出区间，都调这一个函数：METHOD §15 的"只允许一套估计器"
-    就是靠这个入口保证的——复制一份解算代码，两处就会各自漂移。
+    管道出点估计、bootstrap 出区间、`sensitivity.py` 做 λ / α 扫描，都调这一个函数：
+    METHOD §15 的"只允许一套估计器"就是靠这个入口保证的——复制一份解算代码，两处就会各自漂移。
+    `lam` 与 `alpha_of` 只为敏感性扫描而存在（默认值就是生产口径），不是第二套实现。
     """
+    alpha_of = alpha_of or (lambda s: SOURCES[s]["alpha"])
     # 覆盖度必须与 max_p / max_x 同口径（都用 weight_eff）：分子若用原始权重，
     # 被零点惩罚降权过的源会把覆盖度算到 1 以上（实测出现 1.04）。
     # 注意 weight_eff 只含零点惩罚，不含 IRLS 的按模型降权 fac——两轴分子分母
     # 一致即可，fac 是"这个模型在该源上不可信"，不是"没有证据"。
-    p_parts = [(w * SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
-    x_parts = [(w * (1 - SOURCES[s]["alpha"]), r) for w, r, s, _f in ps]
+    p_parts = [(w * alpha_of(s), r) for w, r, s, _f in ps]
+    x_parts = [(w * (1 - alpha_of(s)), r) for w, r, s, _f in ps]
     pw = sum(w for w, _ in p_parts); xw = sum(w for w, _ in x_parts)
     if pw <= 0 and xw <= 0: return None
-    items = [(w, SOURCES[s]["alpha"], r) for w, r, s, _f in ps]
+    items = [(w, alpha_of(s), r) for w, r, s, _f in ps]
     # 界只由做过零点修正的榜决定：没修正的榜零点不同（多半是原始 0），
     # 让它们去顶天花板就等于把坐标重新拉回外推（Mistral Large 4 的 X=1.235 是这么来的）
     zsrc = [r for w, r, s, f in ps if f]
     bounds = ratio_bounds(zsrc) if len(zsrc) >= 4 else ratio_bounds([r for _, r, _, _ in ps])
-    p, x, clamp, fac = fit_px_robust(items, bounds=bounds)
+    p, x, clamp, fac = fit_px_robust(items, lam, bounds=bounds)
     if p is None: return None
     rs = [r for _, r, _, _f in ps]
     return {"p": p, "x": x, "fac": fac, "clamp": 1 if clamp else 0, "clamp_note": clamp,
@@ -598,9 +601,56 @@ def fit_model(ps, max_p, max_x):
             "ps": ps}
 
 
-def tier_of(top):
-    """档位判定的唯一实现（§8：拿发布出来的三位小数坐标比阈值，不拿原始浮点值）。"""
-    return "M0" if top >= 1.25 else "M1" if top >= 1.00 else "M2" if top >= 0.70 else "M3"
+def tier_bounds(values, k=TIER_BANDS):
+    """档位边界由数据自己给（Jenks 自然断裂 / 1D k-means），不写死数值。
+
+    为什么不用固定阈值：1.25 / 1.00 / 0.70 是引入零点之前拍的数，实测它把 0.571~1.194 这一整段
+    连贯的簇从中间切开（27 个模型挤在同一个簇里），被切开的边界上永远有 4 个模型在掷骰子。
+    断裂点本身就在数据里：本轮算出 −0.133 / +0.501 / +1.266，其中 +1.266 与旧阈值 1.25 几乎重合
+    （旧数"猜对"了上边界），问题只出在下边界。
+
+    确定性：初值取分位数（不用随机），迭代到簇中心不动为止；同样的输入必给同样的边界。
+    边界只由**点估计**的坐标算一次；bootstrap 的每次重采样沿用同一套边界，
+    否则每个副本各自定界，"档位稳定率"量的就变成"定界规则稳不稳"而不是坐标稳不稳。
+    返回**降序**的 k−1 个边界。
+    """
+    vs = sorted(values)
+    k = max(2, min(k, len(set(vs))))          # 不同取值不足 k 个就别硬凑
+    cuts = [quantile(vs, i / (k - 1)) for i in range(k)]
+    for _ in range(300):
+        groups = [[] for _ in range(k)]
+        for x in vs:
+            groups[min(range(k), key=lambda i: abs(x - cuts[i]))].append(x)
+        new = [statistics.mean(g) if g else cuts[i] for i, g in enumerate(groups)]
+        if all(abs(a - b) < 1e-12 for a, b in zip(new, cuts)):
+            break
+        cuts = new
+    groups = [[] for _ in range(k)]
+    for x in vs:
+        groups[min(range(k), key=lambda i: abs(x - cuts[i]))].append(x)
+    groups = [g for g in groups if g]
+    bounds = [(groups[i][-1] + groups[i + 1][0]) / 2 for i in range(len(groups) - 1)]
+    return tuple(sorted(bounds, reverse=True))
+
+
+def tier_of(top, bounds):
+    """档位 = 坐标落在哪一段（bounds 降序）。全项目只有这一处判档实现。"""
+    for i, b in enumerate(bounds):
+        if top >= b:
+            return TIERS[i]
+    return TIERS[len(bounds)]
+
+
+def tier_gap(top, bounds):
+    """距**上一档**还差多少（正数=还没够到）；已在最高档返回 ""。
+
+    注意取的是 `bounds[i-1]`（高一档的边界），不是自己脚下那条 `b`——
+    写错就会给出负数（本轮第一次跑就露出来了：GLM-5.3-Flash 的 gap 打成 -0.704）。
+    """
+    for i, b in enumerate(bounds):
+        if top >= b:
+            return "" if i == 0 else round(bounds[i - 1] - top, 3)
+    return round(bounds[-1] - top, 3) if bounds else ""
 
 
 def fit_all(ev):
@@ -629,7 +679,7 @@ def quantile(sv, frac):
     return sv[lo] + (sv[hi] - sv[lo]) * (i - lo)
 
 
-def resample(parts, counts, max_p, max_x):
+def resample(parts, counts, max_p, max_x, bounds):
     """按"源被抽到几次"调整权重，重解每个模型；返回 {(p, x, tier)} 子集。"""
     out = {}
     for k, ps in parts.items():
@@ -637,11 +687,11 @@ def resample(parts, counts, max_p, max_x):
         fit = fit_model(sub, max_p, max_x) if sub else None
         if fit is None: continue
         P3, X3 = round(fit["p"], 3), round(fit["x"], 3)
-        out[k] = (P3, X3, tier_of(max(P3, X3)))
+        out[k] = (P3, X3, tier_of(max(P3, X3), bounds))
     return out
 
 
-def bootstrap(ev, point_tier, runs=1000, seed=BOOT_SEED):
+def bootstrap(ev, point_tier, bounds, runs=1000, seed=BOOT_SEED):
     """源级 bootstrap：有放回抽"计分源"，每次重解全部模型，取 5~95 分位与档位稳定率。
 
     重采样单位是**源**而不是证据行——某个模型在一张榜上有 30 行是 30 条读数，
@@ -670,7 +720,7 @@ def bootstrap(ev, point_tier, runs=1000, seed=BOOT_SEED):
     for _ in range(runs):
         counts = Counter(rng.choices(src_ids, k=len(src_ids)))
         cover.append(len(counts))
-        got = resample(ev["parts"], counts, ev["max_p"], ev["max_x"])
+        got = resample(ev["parts"], counts, ev["max_p"], ev["max_x"], bounds)
         for k in seq:
             seq[k].append(got.get(k))
     out = {}
@@ -690,6 +740,7 @@ def bootstrap(ev, point_tier, runs=1000, seed=BOOT_SEED):
     out["_meta"] = {
         "runs": runs, "seed": seed, "unit": "source", "sources": len(src_ids),
         "interval": "5-95%", "models": len(out), "models_total": len(ev["parts"]),
+        "bounds_used": [round(b, 3) for b in bounds],      # 档位边界沿用点估计那一套（不随副本变）
         "no_evidence": sorted(k for k in ev["parts"] if k not in out),
         "width_med_p": round(statistics.median([b["P_hi"] - b["P_lo"] for b in out.values()]), 3),
         "width_med_x": round(statistics.median([b["X_hi"] - b["X_lo"] for b in out.values()]), 3),
@@ -708,7 +759,7 @@ def bootstrap(ev, point_tier, runs=1000, seed=BOOT_SEED):
 
 
 # ---------- 五、落盘 ----------
-def plane_rows(st, ev, fits, boot=None):
+def plane_rows(st, ev, fits, bounds, boot=None):
     names, x2map = ev["names"], st["x2map"]
     plane = []
     for k, fit in fits.items():
@@ -719,11 +770,11 @@ def plane_rows(st, ev, fits, boot=None):
         # 读者无法核对，而且权重第 5 位小数的抖动就能翻档。
         P3, X3 = round(p, 3), round(x, 3)
         top = max(P3, X3)
-        tier = tier_of(top)
-        # 距下一档还差多少：档位带宽 0.25，差值只有 0.01 量级就说明是临界点
-        nxt = {"M0": None, "M1": 1.25, "M2": 1.00, "M3": 0.70}[tier]
-        gap = "" if nxt is None else round(max(0.0, nxt - top), 3)
-        tag = ("P+" if P3 >= 1.25 else "") + ("X+" if X3 >= 1.25 else "") + ("0锚" if k == ZERO_KEY else "")
+        tier = tier_of(top, bounds)
+        # 距上一档还差多少（边界由 tier_bounds 给）；差值只有 0.01 量级就说明贴在边界上
+        gap = tier_gap(top, bounds)
+        hi_band = bounds[0] if bounds else top
+        tag = ("P+" if P3 >= hi_band else "") + ("X+" if X3 >= hi_band else "") + ("0锚" if k == ZERO_KEY else "")
         rmap = {s: r for w, r, s, _f in ps}
         row = [names[k], k, P3, X3, tier, tag, "",
                round(fit["pcov"], 3), round(fit["xcov"], 3), round(fit["rmse"], 3), gap,
@@ -789,12 +840,22 @@ def main():
     fits = fit_all(ev)
     write_evidence(st, ev, fits)
 
-    point_tier = {k: tier_of(max(round(f["p"], 3), round(f["x"], 3))) for k, f in fits.items()}
+    # 档位边界由这一轮数据自己的分布定（自然断裂），不写死数值；下面所有判档都传这一套边界
+    bounds = tier_bounds([max(round(f["p"], 3), round(f["x"], 3)) for f in fits.values()])
+    st["metrics"]["thresholds"] = {
+        "values": [round(b, 3) for b in bounds],
+        "method": "jenks-1d-kmeans", "bands": TIER_BANDS, "fixed": False,
+        "basis": "max(P,X) 的点估计分布",
+    }
+    print("档位边界（由数据算出，%d 档）：%s" % (
+        TIER_BANDS, " / ".join(f"{TIERS[i]} ≥ {b:+.3f}" for i, b in enumerate(bounds)) +
+        f" / {TIERS[-1]} < {bounds[-1]:+.3f}" if bounds else "样本不足，未分档"))
+    point_tier = {k: tier_of(max(round(f["p"], 3), round(f["x"], 3)), bounds) for k, f in fits.items()}
     boot = None
     if runs:
         import time
         t0 = time.time()
-        boot = bootstrap(ev, point_tier, runs, seed)
+        boot = bootstrap(ev, point_tier, bounds, runs, seed)
         meta = boot["_meta"]
         # 点估计必须落在自己的 5~95 区间里；不落就是实现有问题（分位数取法、缺次数的分母、
         # 重采样与点估计不同路径），当场数出来并写进产物，别等读者发现
@@ -810,8 +871,9 @@ def main():
         print(f"bootstrap：{meta['runs']} 次 × {meta['models_total']} 个模型"
               f"（重采样单位={meta['unit']}，{meta['sources']} 个源，seed={meta['seed']}，"
               f"区间 {meta['interval']}），耗时 {time.time() - t0:.0f}s")
+        gaps = " / ".join(f"{bounds[j] - bounds[j + 1]:.3f}" for j in range(len(bounds) - 1))
         print(f"  每次重采样平均在场 {meta['sources_covered_mean']} 个源（不是 27 个）；"
-              f"区间宽度中位 P {meta['width_med_p']} / X {meta['width_med_x']}（一档带宽 0.25）")
+              f"区间宽度中位 P {meta['width_med_p']} / X {meta['width_med_x']}（本轮相邻边界间距 {gaps}）")
         print("  档位稳定率（分母=全部重采样）中位 " + f"{meta['stability_med']}" + "，分档：" +
               "、".join(f"{t} {v['med']:.2f}(n={v['n']})" for t, v in meta["stability_by_tier"].items()))
         print(f"  稳定率 <0.5 的 {len(meta['unstable'])} 个；多数派与点估计不同的 {len(meta['modal_differs'])} 个；"
@@ -824,7 +886,7 @@ def main():
                   f" 稳定率 {b['stability']:.2f} 在场 {b['presence']:.2f}"
                   f"  P [{b['P_lo']}~{b['P_hi']}] X [{b['X_lo']}~{b['X_hi']}]")
 
-    plane = plane_rows(st, ev, fits, boot)
+    plane = plane_rows(st, ev, fits, bounds, boot)
     pl = open(os.path.join(OUT, "model_plane.csv"), "w", newline="", encoding="utf-8-sig")
     cw = csv.writer(pl, lineterminator="\n"); cw.writerow(plane_cols())
     for r in sorted(plane, key=lambda x: (-x[2], -x[3])): cw.writerow(r)

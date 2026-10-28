@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""一键跑完：pipeline（含源级 bootstrap）-> chart -> 文档数字自检
+"""一键跑完：pipeline（含源级 bootstrap）-> λ/α 敏感性 -> chart -> 文档数字自检
 
 不抓数据；抓数据用 scripts/fetch_*.py。权重要重新校准用 scripts/settle_weights.py。
 
@@ -11,6 +11,7 @@ import subprocess, sys, os
 BASE = os.path.dirname(os.path.abspath(__file__))
 STEPS = [
     ("pipeline.py", ["--bootstrap", "1000"]),   # 默认 1000 次源级重采样，约 10s
+    ("sensitivity.py", []),                     # λ / α 扫描，约 1s；§18 的数字由它产出
     ("make_chart.py", []),
     ("check_docs.py", []),
 ]

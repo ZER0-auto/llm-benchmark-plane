@@ -36,13 +36,21 @@ AA_MAP = {
     "qwen3-8-max":              "qwen3.8max0902",   # display name = "Qwen3.8 Max (0902)"
     "mimo-v2-6-pro":            "mimov2.6pro",
     "mistral-large-4":          "mistrallarge4",    # display name = "Mistral Large 4 Preview"
+    # —— 只有 AA 证据的模型（DECISIONS 2026-10-26：按既有"非填充"口径处理，不单独设规则）——
+    #    key 取 display name 的 norm 写法，这样别处（致知 / Vals）以后出现同一模型时能自动并上
+    "inkling":                  "inkling",           # "Inkling (Xhigh)"
+    "reflection-beam":          "beam1.0",           # "Beam 1.0"
+    "nemotron-3-5-super-vl":    "nemotron3.5supervl",
+    "k2-horizon-375b-a23b":     "k2horizon375ba23b",
 }
 
 # 刻意不映射的 slug。写出来是为了让 load_aa 的自检能区分"漏了"和"故意不要"：
 #   muse-wonder / muse-wonder-full / muse-spark-open：Muse 系列变体名有歧义，无法确认是哪份权重
-#   inkling / reflection-beam / nemotron-3-5-super-vl / k2-horizon-375b-a23b：
-#     平面里没有对应 key，映射进来等于凭空加一批只有 AA 证据的单来源模型（要不要加是另一个决定）
+#   omniscience*：分数跨度太大，暂缓（见 README 已知限制 7）
+# 2026-10-26：inkling / reflection-beam / nemotron-3-5-super-vl / k2-horizon-375b-a23b 已改判为映射。
+# 当初拦下的理由是"会挤占 0.20 的公开源占比上限"，那句话是错的：占比约束的是**来源权重**，
+# 模型数量进不进平面都不改变 sources.csv 里的任何权重。它们只是"只有 AA 证据"的模型，
+# 按既有口径处理即可（缺哪轴就不填、覆盖度低、图上标虚线白心环），不需要单独设规则。
 AA_UNMAPPED = {
     "muse-wonder", "muse-wonder-full", "muse-spark-open",
-    "inkling", "reflection-beam", "nemotron-3-5-super-vl", "k2-horizon-375b-a23b",
 }

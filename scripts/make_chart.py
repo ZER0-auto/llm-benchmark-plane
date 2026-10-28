@@ -120,10 +120,7 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
   <span class="sub" style="margin:0" id="count"></span>
 </div>
 <div class="legend">
-  <span><i style="background:var(--m0)"></i>M0（任一轴 ≥1.25）</span>
-  <span><i style="background:var(--m1)"></i>M1（任一轴 ≥1.00）</span>
-  <span><i style="background:var(--m2)"></i>M2（任一轴 ≥0.70）</span>
-  <span><i style="background:var(--m3)"></i>M3</span>
+__LEGEND__
   <span>● 双轴已测　○ 仅 P　◇ 仅 X</span>
   <span><i style="background:none;border:1.5px dashed #9aa1ac"></i>证据薄（两轴覆盖度都 &lt;35%）</span>
   <span>放不下时按档位隐藏标签（<b id="hidn">0</b> 个），悬停仍显示名字</span>
@@ -140,7 +137,7 @@ details{margin-top:22px}summary{cursor:pointer;color:var(--mut);font-size:12.5px
 P 与 X 被限制在该模型<b>观测比值的区间</b>内：无约束解会外推（某模型全部榜最高只 0.94，回归却能给出 X=1.2），钳位后的点会在 tooltip 里标出拟合 RMSE 与比值范围。<br>
 权重已按留一残差校准（<code>scripts/calibrate_weights.py</code>，口径见 METHOD §15）：注册表里 <code>weight_prior</code> 是初猜、<code>weight_cal</code> 是校准值，管道优先用后者；公开源占比按上限 0.20 配平。<br>
 Artificial Analysis 只用分项（HLE / AA-LCR / CritPT / SciCode / AutomationBench），不使用它的综合指数；Omniscience 因分数跨度过大暂不计分。<br>
-档位：取两轴中较高者，M0 ≥1.25、M1 ≥1.00、M2 ≥0.70，其余 M3。<br>
+__TIERLINE__<br>
 若某模型的来源全是纯 P 或纯 X（α=1 或 0），另一轴留空，画在 P=X 对角线上并用空心标记（○ 仅 P、◇ 仅 X）；当前混合模型下没有这种点。两轴覆盖度都低于 35% 的点画成虚线环并淡显标签（本轮 __THIN__ 个），数值靠先验撑住、只作参考；不剔除，因为单一来源本身也是证据。本轮守卫剔除：__DROPPED__（等效基准超过该榜满分、或不足满分 5%，比值失真）；接近满分的榜：__NEAR__（比值放大，谨慎解读）；ProgramBench 不在来源表中（分数区间 0–18.5 过窄）。__BOOT__ 悬停看各源比值、区间与档位稳定率。
 </div>
 </div>
@@ -169,7 +166,7 @@ function draw(){
     (PLOT.length<DATA.length?`（另有 ${DATA.length-PLOT.length} 个坐标为负，不画在图上，见下方表格）`:"");
 
   // 档位参考线（单轴达标即可，所以只画线不画方块）
-  [[1.25,"M0","#b8860b"],[1.00,"M1","#2563eb"],[0.70,"M2","#0d9488"]].forEach(([t,n,c])=>{
+  __THREF__.forEach(([t,n,c])=>{
     el("line",{x1:px(t),y1:py(MIN),x2:px(t),y2:py(MAX),stroke:c,"stroke-width":1,
       "stroke-dasharray":"4 4",opacity:t===1?0.55:0.3},svg);
     el("line",{x1:px(MIN),y1:py(t),x2:px(MAX),y2:py(t),stroke:c,"stroke-width":1,
@@ -193,7 +190,7 @@ function draw(){
   const GAP=2.5, PADR=2;
   const boxes=[];
   PLOT.forEach(d=>{ boxes.push({x:px(d.X)-7,y:py(d.P)-7,w:14,h:14}); });
-  [[1.25,"M0"],[1.00,"M1"],[0.70,"M2"]].forEach(([t])=>{
+  __THREF__.forEach(([t])=>{
     boxes.push({x:px(t)+3,y:T+1,w:52,h:14});
     boxes.push({x:R-42,y:py(t)-16,w:44,h:14});
   });
@@ -400,6 +397,22 @@ DROP_NAMES = "、".join(k for k in METRICS.get("dropped", {})) or "无"
 NEAR_NAMES = "、".join(METRICS.get("near_ceiling", [])) or "无"
 html = html.replace("__DROPPED__", DROP_NAMES).replace("__NEAR__", NEAR_NAMES)
 html = html.replace("__THIN__", str(meta["thin"]))
+TB = (METRICS.get("thresholds") or {}).get("values") or []
+TCOLORS = ["#b8860b", "#2563eb", "#0d9488", "#7c3aed", "#0891b2"]
+if not TB:
+    raise SystemExit("out/metrics.json 里没有 thresholds.values：先跑 python scripts/pipeline.py"
+                     "（边界由数据算出并写进产物，图表不接受任何写死的档位数值）")
+TLAB = [f"M{i}" for i in range(len(TB) + 1)]                 # 档位数 = 边界数 + 1，随数据退化也不崩
+GAPS = " / ".join(f"{TB[j] - TB[j + 1]:.3f}" for j in range(len(TB) - 1))
+html = html.replace("__LEGEND__", "\n".join(
+    f'  <span><i style="background:{c}"></i>{t}（任一轴 ≥{b:.3f}）</span>'
+    for t, b, c in zip(TLAB, TB, TCOLORS)) +
+    f'\n  <span><i style="background:{TCOLORS[len(TB)]}"></i>{TLAB[-1]}（任一轴 &lt;{TB[-1]:.3f}）</span>')
+html = html.replace("__TIERLINE__",
+    "档位：取两轴中较高者；<b>边界每轮由数据自己算</b>（自然断裂，不写死数值），本轮 "
+    + "、".join(f"{t} ≥{b:.3f}" for t, b in zip(TLAB, TB)) + f"，其余 {TLAB[-1]}（相邻边界间距 {GAPS}）")
+html = html.replace("__THREF__", json.dumps([[round(b, 3), t, c]
+                                            for b, t, c in zip(TB, TLAB, TCOLORS)]))
 BOOT = METRICS.get("bootstrap") or {}
 if BOOT:
     byt = "、".join(f"{t} {v['med']:.2f}" for t, v in BOOT["stability_by_tier"].items())
@@ -407,26 +420,14 @@ if BOOT:
         f"表格与 tooltip 里的区间来自<b>源级 bootstrap</b>（{BOOT['runs']} 次有放回重采样，"
         f"单位=计分源 {BOOT['sources']} 个，seed={BOOT['seed']}，取 {BOOT['interval']} 分位）——"
         f"<b>它是「换一批榜会差多少」的跨榜组成敏感性，不是同一批数据的置信区间</b>："
-        f"每次重采样平均只有 {BOOT['sources_covered_mean']} 个源在场，锚点/版本切分/零点阈值/λ/档位阈值都不在区间里。"
-        f"区间宽度中位 P {BOOT['width_med_p']} / X {BOOT['width_med_x']}（一档带宽只有 0.25），末位小数是蒙特卡洛噪声。"
+        f"每次重采样平均只有 {BOOT['sources_covered_mean']} 个源在场，锚点/版本切分/零点阈值/λ/档位边界都不在区间里。"
+        f"区间宽度中位 P {BOOT['width_med_p']} / X {BOOT['width_med_x']}（本轮相邻边界间距 {GAPS}），末位小数是蒙特卡洛噪声。"
         f"档位稳定率（分母=全部重采样）中位 {BOOT['stability_med']}，分档看是 {byt}；"
         f"稳定率 <0.5 的有 {len(BOOT['unstable'])} 个（{'、'.join(BOOT['unstable'])}），"
         f"多数派与标出档位不同的 {len(BOOT['modal_differs'])} 个（{'、'.join(BOOT['modal_differs'])}），"
         f"证据在场率 <90% 的 {len(BOOT['low_presence'])} 个（只有一个来源的模型会在约三分之一的重采样里<b>完全没有坐标</b>，"
         f"这类点的区间宽度为 0 不代表确定，只代表该榜单独决定它），"
         f"点估计落在自己区间外的 {len(BOOT['outside_band'])} 处（应为 0）。"))
-else:
-    html = html.replace("__BOOT__", "本次运行没有算 bootstrap 区间（跑 python scripts/pipeline.py --bootstrap 1000 之后重出图）。")
-html = html.replace("__THIN__", str(meta["thin"]))
-BOOT = METRICS.get("bootstrap") or {}
-if BOOT:
-    html = html.replace("__BOOT__", (
-        f"表格与 tooltip 里的区间来自<b>源级 bootstrap</b>（{BOOT['runs']} 次有放回重采样，"
-        f"单位=计分源 {BOOT['sources']} 个，seed={BOOT['seed']}，取 {BOOT['interval']} 分位）："
-        f"区间宽度中位 P {BOOT['width_med_p']} / X {BOOT['width_med_x']}，"
-        f"档位稳定率中位 {BOOT['stability_med']}；稳定率低于 50% 的有 {len(BOOT['unstable'])} 个"
-        f"（{'、'.join(BOOT['unstable'])}）；多数派档位与标出的档位不同的有 {len(BOOT['modal_differs'])} 个"
-        f"（{'、'.join(BOOT['modal_differs'])}）。"))
 else:
     html = html.replace("__BOOT__", "本次运行没有算 bootstrap 区间（跑 python scripts/pipeline.py --bootstrap 1000 之后重出图）。")
 out = os.path.join(OUT, "model_plane.html")
