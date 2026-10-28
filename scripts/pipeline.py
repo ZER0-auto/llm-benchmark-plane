@@ -158,7 +158,7 @@ def load_vals():
 
 def load_aa():
     p = os.path.join(DATA, "aa", "aa_rows.csv")
-    if not os.path.exists(p): return {}, {}
+    if not os.path.exists(p): return {}, {}, {}
     agg, seen, stat = {}, set(), {}
     for r in csv.DictReader(open(p, encoding="utf-8-sig")):
         seen.add(r["model_slug"])
@@ -174,7 +174,10 @@ def load_aa():
             st["nonnum"].add(r["model_slug"]); continue
         agg.setdefault(r["source_id"], []).append(
             {"key": key, "name": r["model_name"], "raw_name": r["model_slug"], "version": "aa-2026-10",
-             "date": "2026-10-25", "value": val})
+             # AA 是活榜（没有月榜版本号），证据日期只能是"我们抓它的那天"。
+             # 原来这里硬编码 "2026-10-25"，每周抓一次却永远写同一个日子——日期一栏就成了假信息。
+             # 现在由 fetch_aa.py 把抓取时刻写进数据文件的 fetched_at 列。
+             "date": (r.get("fetched_at") or "")[:10], "value": val})
         st["keys"].add(key)
     # 映射表漂移自检：这张表是手写的，抓取端的 slug 写法一变就会静默失去整片证据
     # （2026-10-26 实测 20 条里 11 条永不命中，AA 五个源各只剩 9 个模型，跑了很久没人发现）
@@ -184,7 +187,11 @@ def load_aa():
         print(f"  aa: {len(dead)} 条映射在数据里永不命中（slug 写法漂移？）：{'、'.join(dead)}")
     if unknown:
         print(f"  aa: {len(unknown)} 个 slug 既没映射也不在 AA_UNMAPPED：{'、'.join(unknown)}")
-    return agg, stat
+    info = {"slugs": len(seen), "declared": len(AA_MAP),
+            "mapped_present": len({AA_MAP[s] for s in seen if s in AA_MAP}),
+            "dead": dead, "unmapped": unknown,
+            "skipped": sorted(seen & AA_UNMAPPED)}
+    return agg, stat, info
 
 # ---------- 版本筛选 ----------
 def map_note(slug, stat):
@@ -359,7 +366,7 @@ def build():
     code_rows = load_code_v3()
     shi_rows, x2map = load_shishan()
     vals, vstat = load_vals()
-    aa, aastat = load_aa()
+    aa, aastat, aainfo = load_aa()
     vals.update(aa)
     vstat.update(aastat)
     print("版本检查：")
@@ -523,6 +530,9 @@ def build():
         "sec": {k: round(v, 4) for k, v in sec.items()},
         "dropped": {k: round(v, 2) for k, v in dropped.items()},
         "near_ceiling": near,
+        # AA 映射自检：声明了几条映射、实际命中几个、哪条在数据里消失、哪些 slug 没映射。
+        # 光靠 stdout 打印等于没说过——README 里"覆盖 N 个模型"必须能由产物核对。
+        "aa": aainfo,
         # 链式换算的每个榜都写进产物：METHOD §6 的表和 README 的 near_ceiling 数字
         # 都要能由产物生成，手抄一遍就会漂移
         "chained": {k: v for k, v in sorted(chain_info.items())},

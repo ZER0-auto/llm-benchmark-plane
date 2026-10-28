@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """抓取屎山挑战赛 /heroes/ 页面里内嵌的 assessment-data JSON"""
-import html, json, os, re, urllib.request
+import html, json, os, re
+
+from fetchlib import get
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(BASE, "data", "shishan", "assessment_data.json")
 URL = "https://shishan.hellomeng.com/heroes/"
 
-req = urllib.request.Request(URL, headers={"User-Agent": "Mozilla/5.0"})
-page = urllib.request.urlopen(req, timeout=60).read().decode("utf-8", "ignore")
+page = get(URL, timeout=60)
 
 m = re.search(r'<script[^>]*id="assessment-data"[^>]*>(.*?)</script>', page, re.S)
 if not m:

@@ -43,21 +43,43 @@ def run(script, grep=None):
             if grep in line: print("   ", line)
 
 
-def record(rounds, final_dw, converged, tol, n_src):
+def record(rounds, final_dw, converged, tol, n_src, start):
     """把"基线是在不动点上重算的"落成产物：只打印在 stdout 等于没说过，没人会翻日志。
     check_docs.py 拿这个文件去核对 METHOD §15 里那句"实测第 N 轮即不动"。"""
     with open(SETTLE, "w", encoding="utf-8") as f:
         json.dump({"rounds": rounds, "final_max_dw": final_dw, "tol": tol,
-                   "converged": converged, "start": "weight_prior", "sources": n_src},
+                   "converged": converged, "start": start, "sources": n_src},
                   f, ensure_ascii=False, indent=1)
-    print(f"   -> out/settle.json（rounds={rounds}, final_max_dw={final_dw}, converged={converged}）")
+    print(f"   -> out/settle.json（rounds={rounds}, final_max_dw={final_dw}, "
+          f"converged={converged}, start={start}）")
+
+
+def reset_to_prior():
+    """把 weight_cal 重置成 weight_prior，让每轮都从同一个起点复算。
+
+    默认这么做，是因为 `out/settle.json` 的 `start` 字段声称就是 `weight_prior`：
+    原来它其实从**上一次留下的** weight_cal 起步（第二次跑就只需 2 轮），
+    于是"第 N 轮即不动"这个数字取决于上一轮跑过什么——那就是产物在说谎。
+    想从当前权重继续（省几轮、验证"再跑也不动"），加 `--keep`。
+    """
+    rows = list(csv.DictReader(open(SRC, encoding="utf-8-sig")))
+    for r in rows:
+        if r["status"] in ("active", "guarded"):
+            r["weight_cal"] = r["weight_prior"]
+    with open(SRC, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader(); w.writerows(rows)
 
 
 def main():
     max_rounds = 8
     if "--max-rounds" in sys.argv:
         max_rounds = int(sys.argv[sys.argv.index("--max-rounds") + 1])
-    print("不动点迭代（calibrate → pipeline）：")
+    start = "settled_weights"
+    if "--keep" not in sys.argv:
+        reset_to_prior()
+        start = "weight_prior"
+    print(f"不动点迭代（calibrate → pipeline，起点 {start}）：")
     prev, last_d = None, None
     for it in range(1, max_rounds + 1):
         run("calibrate_weights.py", grep="来源 ")
@@ -69,13 +91,13 @@ def main():
             if last_d < TOL:
                 print(f"  第 {it} 轮权重不再变化 → 已到不动点"
                       f"（{sum(1 for v in cur.values() if v > 0)} 个源有权重 / 登记 {len(cur)} 个）")
-                record(it, last_d, True, TOL, len(cur))
+                record(it, last_d, True, TOL, len(cur), start)
                 run("make_chart.py")
                 return 0
         prev = cur
     print(f"  警告：{max_rounds} 轮仍未收敛（最后一轮 max|Δw| = {last_d}）；"
           f"再加大 --max-rounds 或人工看 sources.csv；本次不重出图")
-    record(max_rounds, last_d, False, TOL, len(prev or {}))
+    record(max_rounds, last_d, False, TOL, len(prev or {}), start)
     return 1
 
 

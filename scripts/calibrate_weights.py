@@ -241,6 +241,11 @@ def main():
     for r in src_rows:
         if r["id"] in w:
             r["weight_cal"] = f"{w[r['id']]:.4f}"
+        elif r["status"] in ("active", "guarded"):
+            # 进不了回归的源（守卫剔除 / 权重算不出来）不该留下一个数字：
+            # 那会被读成"它有校准权重"。留空 = 它不参与加权。
+            # （settle 默认会把 weight_cal 重置成 weight_prior，所以这里必须显式清掉）
+            r["weight_cal"] = ""
     with io.open(SRC, "w", newline="", encoding="utf-8-sig") as f:
         wr = csv.DictWriter(f, fieldnames=list(src_rows[0].keys()))
         wr.writeheader(); wr.writerows(src_rows)

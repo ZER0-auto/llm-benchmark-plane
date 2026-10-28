@@ -42,15 +42,23 @@ AA_MAP = {
     "reflection-beam":          "beam1.0",           # "Beam 1.0"
     "nemotron-3-5-super-vl":    "nemotron3.5supervl",
     "k2-horizon-375b-a23b":     "k2horizon375ba23b",
+    "gpt-6-1-terra":            "gpt6.1terra",       # "GPT-6.1 Terra (Max)"，2026-10-28 起出现
 }
 
 # 刻意不映射的 slug。写出来是为了让 load_aa 的自检能区分"漏了"和"故意不要"：
 #   muse-wonder / muse-wonder-full / muse-spark-open：Muse 系列变体名有歧义，无法确认是哪份权重
 #   omniscience*：分数跨度太大，暂缓（见 README 已知限制 7）
+#   ling-3-1-flash-1019：display name 是 "Ling 3.1 Flash 1019"，带日期；平面里的 `ling3.1flash`
+#     来自致知 2026-10 的 "Ling-3.1-flash (xhigh)"，没有日期。两者是不是同一份权重无法确认，
+#     并进来会把两个快照混成一个（1017 与不带日期的 V4.1 Flash 就是这么分开的），宁可不并。
 # 2026-10-26：inkling / reflection-beam / nemotron-3-5-super-vl / k2-horizon-375b-a23b 已改判为映射。
 # 当初拦下的理由是"会挤占 0.20 的公开源占比上限"，那句话是错的：占比约束的是**来源权重**，
 # 模型数量进不进平面都不改变 sources.csv 里的任何权重。它们只是"只有 AA 证据"的模型，
 # 按既有口径处理即可（缺哪轴就不填、覆盖度低、图上标虚线白心环），不需要单独设规则。
+# 2026-10-28：glm-5-3-flash 在 AA 上消失（不是改名，见 fetch 差异）。映射先留着——
+# "永不命中"的告警既可能是 slug 写法漂移，也可能是榜单真的下架了模型，两者的区分证据在
+# data/weekly/observations.csv 与当轮的 aa_rows.csv，不靠删表。
 AA_UNMAPPED = {
     "muse-wonder", "muse-wonder-full", "muse-spark-open",
+    "ling-3-1-flash-1019",
 }
