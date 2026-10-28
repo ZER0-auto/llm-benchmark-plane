@@ -105,9 +105,24 @@ def main():
     need("单源模型数", rd, f"{single} 个模型只有一个来源", "README")
     need("near_ceiling 名单", rd, f"（本轮 `near_ceiling`：{near}）", "README")
     need("屎山等效基准", rd, f"（本轮等效基准 {met['chained']['shishan']['equiv']:.2f}）", "README")
-    n_slug = len({r["model_slug"] for r in aarows})
-    aa_map = len(re.findall(r'^\s*"[^"]+":\s*"', open(os.path.join(BASE, "scripts", "aa_map.py"), encoding="utf-8").read().split("AA_UNMAPPED")[0], re.M))
-    need("AA 覆盖 slug 数", rd, f"**Artificial Analysis 覆盖 {aa_map} 个模型**：抓取端有 {n_slug} 个 slug", "README")
+    n_slug = len({r["model_slug"] for r in aarows})
+    aa_map = len(re.findall(r'^\s*"[^"]+":\s*"', open(os.path.join(BASE, "scripts", "aa_map.py"), encoding="utf-8").read().split("AA_UNMAPPED")[0], re.M))
+    # "覆盖几个模型"必须按**真的在榜上**的映射算，不能按映射表声明条数——
+    # 2026-10-28 AA 把 glm-5-3-flash 下架了，声明 25 条、实际命中 24 条，
+    # 按声明数写就会多报一个根本没证据的模型。
+    aainfo = met["aa"]
+    # 交叉核对：产物里的 AA 自检不能自己检查自己，要和"映射表文本"与"抓取数据"两边对得上
+    eq("AA 声明条数 = aa_map.py 的条数", aa_map, aainfo["declared"])
+    eq("AA slug 数 = 抓取数据里的 slug 数", n_slug, aainfo["slugs"])
+    eq("AA 实际命中 = 声明 − 下架", aainfo["declared"] - len(aainfo["dead"]), aainfo["mapped_present"])
+    need("AA 覆盖 slug 数", rd,
+         f"**Artificial Analysis 覆盖 {aainfo['mapped_present']} 个模型**：抓取端有 {aainfo['slugs']} 个 slug，"
+         f"映射表声明 {aainfo['declared']} 条、其中 {aainfo['mapped_present']} 条真的在榜上", "README")
+    if aainfo["dead"]:
+        need("AA 下架 slug 名单", rd,
+             f"`{'、'.join(aainfo['dead'])}` 本轮已从 AA 下架（同一份数据里没有任何替代 slug，不是改名）", "README")
+    need("AA 刻意不映射数", rd,
+         f"另有 {len(aainfo['skipped'])} 个 slug 刻意不映射", "README")
     need("平均覆盖度", rd, f"平均覆盖 P {sum(pc) / len(pc):.2f} / X {sum(xc) / len(xc):.2f}", "README")
     need("零点成立范围", rd,
          f"**零点只在 {n_with} 个源上成立**：其中 {len(zz)} 个做两点归一、{len(zskip)} 个 z>0.75 只降权；其余 {n_wo} 个源仍是单点归一", "README")
@@ -300,6 +315,15 @@ def main():
     if os.path.exists(wk):
         wrows = rows("data", "weekly", "observations.csv")
         need("§19 周留档产物说明", rd, "observations.csv 一行 = (周, 源, 模型) 的原始分与比值", "README")
+        need("§19 fetch_status 说明", rd, "fetch_status（fresh = 本周真抓到了 / stale = 把磁盘旧数据又抄了一遍）", "README")
+        # 状态列必须真的存在且取值合法：没有它，"这周没抓到"会被读成"这周没变化"
+        eq("周表有 fetch_status 列且取值只有 fresh/stale", "fetch_status",
+           "fetch_status" if "fetch_status" in wrows[0] else "缺列")
+        eq("周表 fetch_status 取值合法", set(), {r.get("fetch_status", "") for r in wrows} - {"fresh", "stale"})
+        st_counts = {v: sum(1 for r in wrows if r.get("fetch_status") == v) for v in ("fresh", "stale")}
+        print(f"  周表状态：fresh {st_counts['fresh']} / stale {st_counts['stale']}")
+        if st_counts["stale"]:
+            print("  注意：周表里有 stale 行（那些源本周没抓到）；跨周比较必须先滤掉它们")
         eq("周表里没有未来周次", [], sorted({r["week"] for r in wrows if r["week"] > iso_week_now()}))
     else:
         print("  提示 data/weekly/observations.csv 不存在：还没跑过 fetch_week.py")

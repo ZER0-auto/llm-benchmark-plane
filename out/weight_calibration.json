@@ -2,39 +2,44 @@
  "iterations": [
   {
    "iter": 1,
-   "max_dw": 0.2516,
-   "spearman": 0.98132,
-   "shift": 0.16171
+   "max_dw": 0.2512,
+   "spearman": 0.98351,
+   "shift": 0.15796
   },
   {
    "iter": 2,
-   "max_dw": 0.0374,
-   "spearman": 0.99936,
-   "shift": 0.01295
+   "max_dw": 0.0378,
+   "spearman": 0.9995,
+   "shift": 0.01363
   },
   {
    "iter": 3,
-   "max_dw": 0.0057,
-   "spearman": 0.99995,
-   "shift": 0.00144
+   "max_dw": 0.0041,
+   "spearman": 0.99996,
+   "shift": 0.0015
   },
   {
    "iter": 4,
    "max_dw": 0.0003,
    "spearman": 1.0,
-   "shift": 8e-05
+   "shift": 0.00013
+  },
+  {
+   "iter": 5,
+   "max_dw": 0.0,
+   "spearman": 1.0,
+   "shift": 2e-05
   }
  ],
- "converged_at": 4,
+ "converged_at": 5,
  "public_share": 0.2,
  "tier_changed_vs_prior": [
   "glm5.2",
-  "glm5.3flash",
   "k2horizon375ba23b",
   "ling3.0flash",
   "nemotron3.5supervl"
  ],
- "perturb_flips_mean": 0.5,
+ "perturb_flips_mean": 0.1,
  "perturb_flips_min": 0,
  "perturb_flips_max": 2,
  "perturb_runs": 20,

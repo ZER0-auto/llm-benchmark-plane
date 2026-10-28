@@ -1,7 +1,7 @@
 {
  "sec": {
-  "P": 0.9175,
-  "X": 0.7598
+  "P": 0.916,
+  "X": 0.7612
  },
  "dropped": {
   "medscribe": 102.91,
@@ -9,103 +9,119 @@
   "terminal-bench-science": 0.0
  },
  "near_ceiling": [
+  "sage",
   "legal_bench",
   "shishan"
  ],
+ "aa": {
+  "slugs": 28,
+  "declared": 25,
+  "mapped_present": 24,
+  "dead": [
+   "glm-5-3-flash"
+  ],
+  "unmapped": [],
+  "skipped": [
+   "ling-3-1-flash-1019",
+   "muse-spark-open",
+   "muse-wonder",
+   "muse-wonder-full"
+  ]
+ },
  "chained": {
   "biomysterybench": {
    "alpha": 0.65,
-   "r_anchor": 0.8623,
+   "r_anchor": 0.8618,
    "sec_raw": 67.78,
-   "equiv": 78.6,
+   "equiv": 78.65,
    "ceiling": 100.0,
    "near": false
   },
   "cyber": {
    "alpha": 0.4,
-   "r_anchor": 0.8229,
+   "r_anchor": 0.8231,
    "sec_raw": 73.69,
-   "equiv": 89.55,
+   "equiv": 89.53,
    "ceiling": 100.0,
    "near": false
   },
   "ioi": {
    "alpha": 0.6,
-   "r_anchor": 0.8545,
+   "r_anchor": 0.8541,
    "sec_raw": 40.28,
-   "equiv": 47.14,
+   "equiv": 47.16,
    "ceiling": 100.0,
    "near": false
   },
   "legal_bench": {
    "alpha": 0.85,
-   "r_anchor": 0.8939,
+   "r_anchor": 0.8928,
    "sec_raw": 83.28,
-   "equiv": 93.16,
+   "equiv": 93.28,
    "ceiling": 100.0,
    "near": true
   },
   "medcode": {
    "alpha": 0.55,
-   "r_anchor": 0.8466,
+   "r_anchor": 0.8463,
    "sec_raw": 41.17,
-   "equiv": 48.63,
+   "equiv": 48.65,
    "ceiling": 100.0,
    "near": false
   },
   "mysterymechanism": {
    "alpha": 0.85,
-   "r_anchor": 0.8939,
+   "r_anchor": 0.8928,
    "sec_raw": 21.17,
-   "equiv": 23.68,
+   "equiv": 23.71,
    "ceiling": 100.0,
    "near": false
   },
   "proof_bench": {
    "alpha": 0.9,
-   "r_anchor": 0.9018,
+   "r_anchor": 0.9005,
    "sec_raw": 54.0,
-   "equiv": 59.88,
+   "equiv": 59.97,
    "ceiling": 100.0,
    "near": false
   },
   "public-benefits-bench": {
    "alpha": 0.5,
-   "r_anchor": 0.8387,
+   "r_anchor": 0.8386,
    "sec_raw": 64.28,
-   "equiv": 76.64,
+   "equiv": 76.65,
    "ceiling": 100.0,
    "near": false
   },
   "sage": {
    "alpha": 0.9,
-   "r_anchor": 0.9018,
-   "sec_raw": 47.88,
-   "equiv": 53.1,
+   "r_anchor": 0.9005,
+   "sec_raw": 85.38,
+   "equiv": 94.82,
    "ceiling": 100.0,
-   "near": false
+   "near": true
   },
   "shishan": {
    "alpha": 0.5,
-   "r_anchor": 0.8387,
+   "r_anchor": 0.8386,
    "sec_raw": 78.93,
-   "equiv": 94.12,
+   "equiv": 94.13,
    "ceiling": 100.0,
    "near": true
   },
   "skillsbench": {
    "alpha": 0.4,
-   "r_anchor": 0.8229,
+   "r_anchor": 0.8231,
    "sec_raw": 69.8,
-   "equiv": 84.82,
+   "equiv": 84.8,
    "ceiling": 100.0,
    "near": false
   },
   "swebench-multimodal": {
    "alpha": 0.35,
-   "r_anchor": 0.815,
+   "r_anchor": 0.8154,
    "sec_raw": 46.46,
-   "equiv": 57.0,
+   "equiv": 56.98,
    "ceiling": 100.0,
    "near": false
   }
@@ -113,12 +129,12 @@
  "zero_ref": "minimaxm3",
  "zero_z": {
   "code-migration-v1-1": 0.3095,
-  "cyber": 0.7259,
+  "cyber": 0.726,
   "legal_research": 0.6596,
   "logic": 0.4258,
-  "proof_bench": 0.3006,
-  "skillsbench": 0.6071,
-  "swebench-multimodal": 0.5848,
+  "proof_bench": 0.3002,
+  "skillsbench": 0.6073,
+  "swebench-multimodal": 0.585,
   "tax_agent_bench": 0.4642,
   "terminal-bench-4": 0.0317,
   "vibe-code": 0.5422
@@ -128,14 +144,14 @@
   "cyber": 0.548,
   "emb-v1-1": 0.272,
   "fabv2-1": 0.273,
-  "legal_bench": 0.166,
+  "legal_bench": 0.169,
   "legal_research": 0.681,
   "logic": 1.0,
   "medcode": 0.1,
   "proof_bench": 1.0,
   "public-benefits-bench": 0.326,
-  "sage": 0.1,
-  "skillsbench": 0.786,
+  "sage": 0.196,
+  "skillsbench": 0.785,
   "swebench-multimodal": 0.83,
   "tax_agent_bench": 1.0,
   "terminal-bench-4": 1.0,
@@ -152,16 +168,16 @@
  "zero_skip_z": {
   "emb-v1-1": 0.8638,
   "fabv2-1": 0.8634,
-  "legal_bench": 0.9168,
-  "medcode": 0.9518,
-  "public-benefits-bench": 0.8369,
-  "sage": 0.9525
+  "legal_bench": 0.9157,
+  "medcode": 0.9515,
+  "public-benefits-bench": 0.8368,
+  "sage": 0.9021
  },
  "thresholds": {
   "values": [
-   1.26,
-   0.597,
-   -0.134
+   1.276,
+   0.596,
+   -0.135
   ],
   "method": "jenks-1d-kmeans",
   "bands": 4,
@@ -174,32 +190,32 @@
   "unit": "source",
   "sources": 27,
   "interval": "5-95%",
-  "models": 64,
-  "models_total": 64,
+  "models": 66,
+  "models_total": 66,
   "bounds_used": [
-   1.26,
-   0.597,
-   -0.134
+   1.276,
+   0.596,
+   -0.135
   ],
   "no_evidence": [],
-  "width_med_p": 0.459,
-  "width_med_x": 0.54,
-  "stability_med": 0.85,
+  "width_med_p": 0.449,
+  "width_med_x": 0.539,
+  "stability_med": 0.849,
   "stability_by_tier": {
    "M0": {
     "n": 10,
-    "med": 0.904,
-    "min": 0.681
+    "med": 0.885,
+    "min": 0.656
    },
    "M1": {
-    "n": 27,
-    "med": 0.961,
-    "min": 0.53
+    "n": 28,
+    "med": 0.964,
+    "min": 0.486
    },
    "M2": {
-    "n": 16,
+    "n": 17,
     "med": 0.682,
-    "min": 0.341
+    "min": 0.404
    },
    "M3": {
     "n": 11,
@@ -214,6 +230,7 @@
    "ernie5.1",
    "gpt5.5instant",
    "hy3",
+   "hy4preview",
    "ling3.1flash",
    "longcat2.0",
    "openpangu2.0flash",
@@ -230,6 +247,7 @@
    "dots3notepreview",
    "ernie5.1",
    "gpt5.5instant",
+   "hy4preview",
    "ling3.1flash",
    "minimaxm3",
    "openpangu2.0flash",
@@ -243,10 +261,12 @@
   "sources_covered_mean": 17.3,
   "unstable": [
    "glm5.3flash",
+   "gpt5.5",
    "k2horizon375ba23b"
   ],
   "modal_differs": [
    "glm5.3flash",
+   "gpt5.5",
    "k2horizon375ba23b"
   ],
   "outside_band": []
