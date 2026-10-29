@@ -376,7 +376,8 @@ composite 位移相对改善 `< 2%`（或绝对位移 < 1e-4）。当前从初�
 
 **不动点**：校准读的证据比值本身依赖 `weight_cal` —— 链式榜的等效基准由**带权的** P_sec / X_sec 折算（§6），
 所以"跑一次 calibrate 就写回 sources.csv"留下的是差一步的不自洽基线（权重来自旧权重生成的证据）。
-`scripts/settle_weights.py` 交替跑 calibrate → pipeline 直到 `max|Δw| < 1e-9`（实测第 2 轮即不动；轮数与最后的
+`scripts/settle_weights.py` 交替跑 calibrate → pipeline 直到 `max|Δw| < 1e-9`（实测第 4 轮即不动；起点先刷一次
+`pipeline.py`，保证第一轮 calibrate 读的是当轮权重生成的证据，轮数不再随上回跑到哪漂移；轮数与最后的
 `max|Δw|` 落在 `out/settle.json`，`check_docs.py` 会拿它核对这句话），
 本仓库的基线数字都在这个不动点上重算。2026-10-26 查出的旧基线一步之差：P_sec 0.9171 → 0.9170，
 个别模型坐标动到千分位（Kimi-K3 的 P 1.159 → 1.16），档位分布不变；但基准模型 1017 会因浮点噪声

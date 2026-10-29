@@ -11,6 +11,12 @@
 写进 `out/settle.json`（谁跑了几轮、最后的 max|Δw| 是多少），再出图。
 收敛后就是自洽基线：再跑多少次都不动（实测 max|Δw| = 0，逐轮比特级一致）。
 
+起点必须"证据与权重同步"：`reset_to_prior()` 只改 `sources.csv`，磁盘上的 `out/model_evidence.csv`
+还是**上一次**权重生成的。若直接进循环，第一轮 calibrate 会拿旧证据去校准新起点——这一步白跑，
+`rounds` 于是取决于"上回跑到哪"，同一份代码在干净机与稳定态复跑会给出 4 轮 / 2 轮两种结果
+（2026-10-29 实测）。所以进入循环前先跑一次 `pipeline.py`，让证据严格由当轮 `weight_cal` 生成；
+无论何时运行都从同一起点出发，`rounds` 才有可比性。
+
 用法：
   python scripts/settle_weights.py                # 最多 8 轮
   python scripts/settle_weights.py --max-rounds 5
@@ -79,6 +85,10 @@ def main():
     if "--keep" not in sys.argv:
         reset_to_prior()
         start = "weight_prior"
+    # 先把磁盘上的证据刷成"当轮权重"生成的：否则第一轮 calibrate 读的是上一次留下的
+    # out/model_evidence.csv，rounds 会随"上回跑到哪"漂移（4 轮 / 2 轮两种结果）。
+    # --keep 也照跑：这条不变量是"证据始终与 sources.csv 的 weight_cal 同步"。
+    run("pipeline.py")
     print(f"不动点迭代（calibrate → pipeline，起点 {start}）：")
     prev, last_d = None, None
     for it in range(1, max_rounds + 1):
