@@ -91,7 +91,7 @@ svg{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--
 .grid{stroke:#eef0f3;stroke-width:1}
 .zone-l{font-size:11px;fill:#b6bcc6;letter-spacing:1px}
 .pt{cursor:pointer}
-.pt text{font-size:10.5px;fill:#3f4650;paint-order:stroke;stroke:#fff;stroke-width:2.6px;stroke-linejoin:round}
+.pt text{font-size:13px;fill:#3f4650;paint-order:stroke;stroke:#fff;stroke-width:3.2px;stroke-linejoin:round}
 .pt.thin text{opacity:.66}
 .pt.thin .conn{opacity:.45}
 .pt.hid text,.pt.hid .conn{display:none}
@@ -260,7 +260,10 @@ function draw(){
       ring.setAttribute("data-tp",d.tpoint);
       g.insertBefore(ring,mk);
     }
-    const w=t.getComputedTextLength()+4, hgt=14;
+    // 标签盒子的高度必须跟着 CSS 字号走：原来写死 14px 是按 10.5px 字排的，
+    // 字号一旦放大而盒子不变，避让算法会以为还有空隙，标签照样压在一起。
+    const fs=parseFloat(getComputedStyle(t).fontSize)||10.5;
+    const w=t.getComputedTextLength()+4, hgt=Math.round(fs*1.33);
 
     const sp=spot(cx,cy,w,hgt,170,false);
     const box=sp?sp.box:
@@ -269,9 +272,9 @@ function draw(){
     const [ax2,ay2]=anchor(cx,cy,box);
     const ln=el("line",{x1:cx,y1:cy,x2:ax2,y2:ay2,class:"conn",stroke:COLOR[d.tier]},g);
     g.insertBefore(ln,mk);
-    t.setAttribute("x",box.x+2); t.setAttribute("y",box.y+hgt-3.5);
+    t.setAttribute("x",box.x+2); t.setAttribute("y",box.y+hgt-Math.round(fs*0.33));
     boxes.push(box);
-    placed.push({cx,cy,w,hgt,t,ln,box,d,g});
+    placed.push({cx,cy,w,hgt,t,ln,box,d,g,fs});
     g.addEventListener("mouseenter",e=>{g.classList.add("hl");showTip(d,e);});
     g.addEventListener("mousemove",e=>moveTip(e));
     g.addEventListener("mouseleave",()=>{g.classList.remove("hl");if(pinned!==d)tip.style.opacity=0;});
@@ -283,7 +286,7 @@ function draw(){
   const ovOf=b=>{const q=padOf(b);let t=0;for(const o of boxes) if(o!==b) t+=inter(q,o);return t;};
   const apply=p=>{const [lx,ly]=anchor(p.cx,p.cy,p.box);
     p.ln.setAttribute("x2",lx); p.ln.setAttribute("y2",ly);
-    p.t.setAttribute("x",p.box.x+2); p.t.setAttribute("y",p.box.y+p.hgt-3.5);};
+    p.t.setAttribute("x",p.box.x+2); p.t.setAttribute("y",p.box.y+p.hgt-Math.round(p.fs*0.33));};
 
   for(let pass=0;pass<80;pass++){
     let moved=false;
