@@ -693,7 +693,12 @@ def resample(parts, counts, max_p, max_x, bounds):
     """按"源被抽到几次"调整权重，重解每个模型；返回 {(p, x, tier)} 子集。"""
     out = {}
     for k, ps in parts.items():
-        sub = [(w * counts[s], r, s, f) for (w, r, s, f) in ps if s in counts]
+        # [exp-543143d7] 权重按平均重复次数归一：等比例抽中 c 次时等效 λ 不再减半，
+        # 抽中源越少总权重越低（保留向先验收缩）
+        raw = [(w, r, s, f) for (w, r, s, f) in ps if s in counts]
+        sum_c = sum(counts[s] for (_w, _r, s, _f) in raw)
+        scale = (len(raw) / sum_c) if sum_c > 0 else 1.0
+        sub = [(w * counts[s] * scale, r, s, f) for (w, r, s, f) in raw]
         fit = fit_model(sub, max_p, max_x) if sub else None
         if fit is None: continue
         P3, X3 = round(fit["p"], 3), round(fit["x"], 3)
@@ -712,9 +717,11 @@ def bootstrap(ev, point_tier, bounds, runs=1000, seed=BOOT_SEED):
     （单个源被抽到的概率 ≈ 1 − (26/27)^27 ≈ 0.63），所以区间回答的是"换一批约 17 块榜，
     坐标会差多少"，不是"同一批数据的抽样误差"；锚点选取、版本切分、z≤0.75 阈值、λ、
     档位阈值都不体现在区间里（见 METHOD §17）。
-    复制 k 次会让那张榜的权重也乘 k、从而相对削弱岭正则——实测把每次重采样的权重质量
-    归一回全量质量，中位宽度只从 P 0.431 变到 0.418 / X 0.536 变到 0.566，
-    不是主因，所以这里保留朴素的可复制加权（少一层解释成本）。
+    复制 k 次会让那张榜的权重也乘 k、从而相对削弱岭正则。`resample()` 因此按该模型本轮
+    命中各源的平均重复次数 `n_hit / sum_c` 缩放权重：全抽中各 1 次时与点估计逐比特一致
+    （齐次不变性），等比例抽中 c 次时总权重回到原值（等效 λ 不再被稀释），只抽中部分源时
+    总权重随命中数自然下降（保留"证据越少越向先验收缩"）。实测 X 区间宽度中位 0.539 → 0.518、
+    P 0.449 → 0.451，点估计逐位不变、`outside_band` 仍为空。
 
     `tier_stability` 的分母是**全部重采样次数**：抽不到任何证据的那几次算"没落回原档"。
     用"有证据的次数"当分母会把结论反过来——只有一个源的模型在源被抽到时按构造必然同档

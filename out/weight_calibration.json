@@ -2,31 +2,31 @@
  "iterations": [
   {
    "iter": 1,
-   "max_dw": 0.2512,
-   "spearman": 0.98351,
-   "shift": 0.15796
+   "max_dw": 0.2226,
+   "spearman": 0.98631,
+   "shift": 0.15059
   },
   {
    "iter": 2,
-   "max_dw": 0.0378,
-   "spearman": 0.9995,
-   "shift": 0.01363
+   "max_dw": 0.028,
+   "spearman": 0.99971,
+   "shift": 0.0133
   },
   {
    "iter": 3,
-   "max_dw": 0.0041,
-   "spearman": 0.99996,
-   "shift": 0.0015
+   "max_dw": 0.0035,
+   "spearman": 1.0,
+   "shift": 0.0019
   },
   {
    "iter": 4,
-   "max_dw": 0.0003,
-   "spearman": 1.0,
-   "shift": 0.00013
+   "max_dw": 0.0007,
+   "spearman": 0.99996,
+   "shift": 0.0002
   },
   {
    "iter": 5,
-   "max_dw": 0.0,
+   "max_dw": 0.0001,
    "spearman": 1.0,
    "shift": 2e-05
   }
@@ -34,12 +34,13 @@
  "converged_at": 5,
  "public_share": 0.2,
  "tier_changed_vs_prior": [
+  "claudeopus4.6",
   "glm5.2",
   "k2horizon375ba23b",
   "ling3.0flash",
   "nemotron3.5supervl"
  ],
- "perturb_flips_mean": 0.1,
+ "perturb_flips_mean": 0.55,
  "perturb_flips_min": 0,
  "perturb_flips_max": 2,
  "perturb_runs": 20,

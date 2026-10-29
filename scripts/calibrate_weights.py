@@ -5,6 +5,12 @@
 再预测该来源的比值，与实测比值的差就是这个来源的“不合群程度”。
 可信度先验（级别 × 覆盖 × 新鲜度）除以该误差，作为权重的下一轮猜测。
 
+两处稳健化（2026-10-29，A/B 实测后合入）：
+  1. 区分度 `spread[s]` 用 10%~90% 缩尾标准差（Winsorized SD）。单个极端负值不再虚增分散度，
+     量纲与原 SD 一致（不用 IQR：正态下 IQR≈1.349σ，直接换会改分子标度）。
+  2. 留一残差在**同源平台**内会被系统性低估——同 host + 同 mode 的榜共享同一套评测框架，
+     互相“背书”（Vals 家族占 18 个源）。拟合留一坐标时把这类其余源按 `1/√K` 折算权重。
+
 用法：先跑 pipeline.py，再跑本脚本，然后重跑 pipeline.py（它会优先用 weight_cal）。
 
 注意：本脚本读的证据比值本身依赖 weight_cal（链式榜的等效基准由带权的 P_sec/X_sec 折算，§6），
@@ -29,7 +35,7 @@ GRADE = {"A": 1.00, "A-": 0.90, "B+": 0.80, "B": 0.70, "C+": 0.55, "C": 0.40}
 
 
 # 与管道共用同一个估计器（有界 + 按残差降权）与同一个判档实现，否则留一残差量的是另一套模型
-from pipeline import fit_px_robust, ratio_bounds, tier_of, LAM_DEFAULT
+from pipeline import fit_px_robust, ratio_bounds, tier_of, LAM_DEFAULT, quantile
 
 # 岭强度只有管道那一处定义（本脚本原来另写了一份 LAM = 0.03，改 λ 时迟早漏改）
 LAM = LAM_DEFAULT
@@ -117,9 +123,13 @@ def main():
 
     # 区分度：一个源自己的比值散布。只用“合群程度”当误差会奖励平庸的榜
     # （大家都差不多分的榜留一残差天然小），所以按 可信度 × 区分度 / 留一残差 定权。
+    # [exp-543143d7] 10%~90% 缩尾标准差：剔除单点极端负值，量纲与原始 SD 一致
     spread = {}
     for s in ids:
-        v = per_src[s]
+        v = sorted(per_src[s])
+        if len(v) >= 6:
+            lo, hi = quantile(v, 0.10), quantile(v, 0.90)
+            v = [min(hi, max(lo, x)) for x in v]
         m = sum(v) / len(v)
         spread[s] = math.sqrt(sum((x - m) ** 2 for x in v) / len(v))
 
@@ -131,15 +141,31 @@ def main():
         z = [it[2] for it in items if it[3]]
         return ratio_bounds(z) if len(z) >= 4 else ratio_bounds([it[2] for it in items])
 
+    from urllib.parse import urlparse
+
+    def host(sid):
+        u = (meta[sid].get("url") or "").strip()
+        return urlparse(u).netloc.lower() if u else ""
+
+    _fam = {s: (host(s), meta[s].get("mode", "")) for s in ids}
+
     def loo_errors(weights):
-        """留一残差：每个源在多少模型上被其余源反驳。"""
+        """留一残差：每个源在多少模型上被其余源反驳。
+
+        [exp-543143d7] 同源平台去抱团：同 host+同 mode 的其余源按 1/sqrt(K) 打折，
+        打破 Vals 家族内部自洽导致的留一残差虚小、权重垄断。
+        """
         res = {s: [] for s in ids}
         for _, items in per_model.items():
             if len(items) < MIN_SRC_PER_MODEL:
                 continue
             bd = bounds_of(items)
             for i, (sid, alpha, ratio, _f) in enumerate(items):
-                rest = [(weights[sid2], a2, r2) for j, (sid2, a2, r2, _g) in enumerate(items) if j != i]
+                same = {sid2 for j, (sid2, _a2, _r2, _g) in enumerate(items)
+                        if j != i and _fam[sid2] == _fam[sid]}
+                disc = 1.0 / math.sqrt(len(same)) if same else 1.0
+                rest = [(weights[sid2] * (disc if sid2 in same else 1.0), a2, r2)
+                        for j, (sid2, a2, r2, _g) in enumerate(items) if j != i]
                 p, x = fit_px(rest, LAM, bd)
                 if p is None:
                     continue
