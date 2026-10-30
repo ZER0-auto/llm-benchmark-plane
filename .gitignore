@@ -2,3 +2,9 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+dist/
+# 第三方榜单的抓取快照不入库：版权归各来源，本仓库只发布归一化后的 out/ 产物。
+# 克隆后先跑 README「快速开始」第 1 步抓取，data/ 会在本地重新生成。
+data/
+# 部署平台（妙搭 / Qoder site）在现场生成的元数据，含内部 deploymentId，不该进仓库
+*.qoder.site

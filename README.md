@@ -26,6 +26,10 @@
 
 ## 快速开始
 
+> **本仓库不附带第三方数据快照**：`data/` 已在 `.gitignore` 里，克隆下来是空的。
+> 必须先跑下面第 1 步的四个抓取脚本（需要网络），否则 `out/` 无法重算、`check_docs.py` 也跑不了。
+> `sources.csv` 与 `out/` 是随仓库发布的：前者是注册表，后者是当前快照的产物。
+
 ```bash
 # 1) 抓数据（需要网络）
 python scripts/fetch_zhizhi.py     # 致知月榜 CSV
@@ -82,7 +86,7 @@ BL 的逐模型成绩基本来自厂商自己的发布稿，按口径不能进�
 ```
 sources.csv      来源注册表：状态、公开性、锚点、权重（初猜 + 校准）、P 成分 α、测试机制
 sources_bl_candidates.csv  BL 候选源（status=candidate，不进计分；mapped_models / snapshot / anchor_kind 由 `bl_compare.py --update-registry` 回填）
-data/            抓取到的原始数据（按来源分目录）
+data/            抓取到的原始数据（按来源分目录）——**不入库**，克隆后由 fetch_*.py 在本地生成
   zhizhi/        致知月榜 CSV（logic / code_v3）
   shishan/       屎山挑战赛 assessment-data 快照
   vals/          Vals 逐模型 accuracy / harness
@@ -145,7 +149,9 @@ out/
 | BenchmarkList | https://benchmarklist.com/ | 第三方汇总快照；多数表的原始出处是厂商发布稿，只做交叉校验、不进计分 |
 | Artificial Analysis | https://artificialanalysis.ai/evaluations | 第三方跑的分项成绩；综合指数不用 |
 
-原始数据版权归各来源所有，本仓库仅保存用于复现的分析快照。代码以 MIT 许可发布，见 [LICENSE](LICENSE)；数据快照的授权范围见 [NOTICE](NOTICE)。
+原始数据版权归各来源所有，**本仓库不再分发这些快照**：`data/` 不入库，需要的人自行运行
+`scripts/fetch_*.py` 抓取。仓库发布的是代码（MIT，见 [LICENSE](LICENSE)）与归一化后的分析产物 `out/`；
+各来源的使用条款见 [NOTICE](NOTICE)。
 
 ## 已知限制
 

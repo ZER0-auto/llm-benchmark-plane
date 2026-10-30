@@ -2,8 +2,12 @@
 
 本仓库中的代码（scripts/、run_all.py）以 MIT 许可发布，见 LICENSE。
 
-data/ 与 out/ 下的原始数据快照来自第三方 benchmark，版权归各来源所有，
-不在 MIT 许可范围内，仅用于复现本仓库的分析结果：
+**本仓库不附带第三方数据快照。** data/ 目录不入库（见 .gitignore），需要的人自行运行
+scripts/fetch_*.py 抓取，抓取结果留在他自己的机器上。仓库里随代码发布的只有：
+  - sources.csv / sources_bl_candidates.csv：来源注册表（人工维护的元数据，不含逐模型成绩）；
+  - out/：由上述数据算出的归一化产物（坐标、权重、区间、图表）。
+
+这些数据的版权归各来源所有，不在 MIT 许可范围内：
 
 - 致知：https://llm2014.github.io/llm_benchmark/
 - 屎山挑战赛：https://shishan.hellomeng.com/
@@ -12,4 +16,4 @@ data/ 与 out/ 下的原始数据快照来自第三方 benchmark，版权归各�
 - BenchmarkList：https://benchmarklist.com/（只做交叉校验，不进计分；逐条成绩的原始出处多为各厂商发布稿，
   版权归各发布方）
 
-引用或再分发这些数据前，请先确认各来源的使用条款。
+自行抓取、使用或再分发这些数据前，请先确认各来源的使用条款。
