@@ -355,6 +355,31 @@ def fit_rmse(items, px, x_):
 
 
 # ---------- 装配证据：加载 + 版本筛选 + 守卫 + 锚点 / 链式 / 零点（不写文件） ----------
+DATA_HINT = (
+    "本仓库不附带第三方数据快照（版权归各来源，见 NOTICE），data/ 需自行抓取。\n"
+    "先跑 README「快速开始」第 1 步，四选一或依次跑：\n"
+    "  python scripts/fetch_zhizhi.py     # 致知月榜\n"
+    "  python scripts/fetch_shishan.py    # 屎山挑战赛\n"
+    "  python scripts/fetch_vals.py       # Vals\n"
+    "  python scripts/fetch_aa.py         # Artificial Analysis\n"
+    "抓完再回来跑 run_all.py。")
+
+
+def require_data():
+    """data/ 缺目录时给一句人话，而不是让 json.load 抛 FileNotFoundError。
+
+    公开仓库克隆下来 data/ 是空的（.gitignore 里），新人第一条命令必然踩这里；
+    一个裸的 FileNotFoundError 只会让人以为仓库坏了。
+    """
+    need = {"zhizhi": "致知月榜（fetch_zhizhi.py）",
+            "shishan": "屎山挑战赛（fetch_shishan.py）",
+            "vals": "Vals（fetch_vals.py）"}
+    missing = [f"data/{k}（{v}）" for k, v in need.items()
+               if not os.path.isdir(os.path.join(DATA, k))]
+    if missing:
+        raise SystemExit("缺数据目录：" + "、".join(missing) + "\n\n" + DATA_HINT)
+
+
 def build():
     """返回 state（per_source / anchor_of / sec / zero_* / metrics）。
 
@@ -362,6 +387,7 @@ def build():
     版本选取、链式等效基准、零点 z 全部固定复用（每次重采样都重估锚点会把二阶不确定性
     混进区间里）。解算入口只有 `fit_model` 一个，管道和 bootstrap 走同一条路径。
     """
+    require_data()
     logic_rows = load_logic()
     code_rows = load_code_v3()
     shi_rows, x2map = load_shishan()
